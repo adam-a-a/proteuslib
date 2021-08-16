@@ -259,6 +259,12 @@ class ReverseOsmosisData(UnitModelBlockData):
                                      "the provided property package has specified {} solvent components"
                                      .format(len(self.config.property_package.solvent_set)))
 
+        if len(self.config.property_package.solvent_set) == 0:
+            raise ConfigurationError("The RO model was expecting a solvent and did not receive it.")
+
+        if len(self.config.property_package.solute_set) == 0:
+            raise ConfigurationError("The RO model was expecting a solute and did not receive any.")
+
     def build(self):
         """
         Build the RO model.
