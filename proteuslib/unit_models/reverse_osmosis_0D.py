@@ -280,6 +280,8 @@ class ReverseOsmosisData(UnitModelBlockData):
 
         solvent_set = self.config.property_package.solvent_set
         solute_set = self.config.property_package.solute_set
+        for j in self.config.property_package.component_list:
+            print(j)
         # Check configuration errors
         self._process_config()
 
@@ -308,16 +310,18 @@ class ReverseOsmosisData(UnitModelBlockData):
 
         # Add unit variables
         def flux_mass_io_phase_comp_initialize(b, t, io, p, j):
-            if j in solvent_set:
+            if j in b.config.property_package.solvent_set:
                 return 5e-4
             elif j in solute_set:
                 return 1e-6
 
         def flux_mass_io_phase_comp_bounds(b, t, io, p, j):
-            if j in solvent_set:
+            if j in b.config.property_package.solvent_set:
+                print("SOLVENT MADE IT")
                 ub = 3e-2
                 lb = 1e-4
-            elif j in solute_set:
+            elif j in self.config.property_package.solute_set:
+                print("SOLUTE MADE IT")
                 ub = 1e-3
                 lb = 1e-8
             return lb, ub
@@ -619,7 +623,7 @@ class ReverseOsmosisData(UnitModelBlockData):
             if comp.is_solvent():
                 return (b.flux_mass_io_phase_comp[t, x, p, j] == b.A_comp[t, j] * b.dens_solvent
                         * ((prop_feed.pressure - prop_perm.pressure)
-                           - (prop_feed_inter.pressure_osm - prop_perm.pressure_osm)))
+                           - (prop_feed_inter.pressure_osm_phase['Liq'] - prop_perm.pressure_osm_phase['Liq'])))
             elif comp.is_solute():
                 return (b.flux_mass_io_phase_comp[t, x, p, j] == b.B_comp[t, j]
                         * (prop_feed_inter.conc_mass_phase_comp[p, j] - prop_perm.conc_mass_phase_comp[p, j]))
@@ -896,8 +900,8 @@ class ReverseOsmosisData(UnitModelBlockData):
         def eq_over_pressure_ratio(b, t):
             return (b.feed_side.properties_out[t].pressure ==
                     b.over_pressure_ratio[t]
-                    * (b.feed_side.properties_out[t].pressure_osm
-                    - b.permeate_side.properties_out[t].pressure_osm))
+                    * (b.feed_side.properties_out[t].pressure_osm_phase['Liq']
+                    - b.permeate_side.properties_out[t].pressure_osm_phase['Liq']))
 
     def initialize(blk,
                    initialize_guess=None,
@@ -1090,18 +1094,18 @@ class ReverseOsmosisData(UnitModelBlockData):
             cp_name=f'{j} Permeate Concentration '
             var_dict[cp_name] = (
                 self.permeate_side.properties_mixed[time_point].conc_mass_phase_comp['Liq', j])
-        if self.feed_side.properties_interface_out[time_point].is_property_constructed('pressure_osm'):
+        if self.feed_side.properties_interface_out[time_point].is_property_constructed('pressure_osm_phase'):
             var_dict['Osmotic Pressure @Outlet,Membrane-Interface '] = (
-                self.feed_side.properties_interface_out[time_point].pressure_osm)
-        if self.feed_side.properties_out[time_point].is_property_constructed('pressure_osm'):
+                self.feed_side.properties_interface_out[time_point].pressure_osm_phase['Liq'])
+        if self.feed_side.properties_out[time_point].is_property_constructed('pressure_osm_phase'):
             var_dict['Osmotic Pressure @Outlet,Bulk'] = (
-                self.feed_side.properties_out[time_point].pressure_osm)
-        if self.feed_side.properties_interface_in[time_point].is_property_constructed('pressure_osm'):
+                self.feed_side.properties_out[time_point].pressure_osm_phase['Liq'])
+        if self.feed_side.properties_interface_in[time_point].is_property_constructed('pressure_osm_phase'):
             var_dict['Osmotic Pressure @Inlet,Membrane-Interface'] = (
-                self.feed_side.properties_interface_in[time_point].pressure_osm)
-        if self.feed_side.properties_in[time_point].is_property_constructed('pressure_osm'):
+                self.feed_side.properties_interface_in[time_point].pressure_osm_phase['Liq'])
+        if self.feed_side.properties_in[time_point].is_property_constructed('pressure_osm_phase'):
             var_dict['Osmotic Pressure @Inlet,Bulk'] = (
-                self.feed_side.properties_in[time_point].pressure_osm)
+                self.feed_side.properties_in[time_point].pressure_osm_phase['Liq'])
         if self.feed_side.properties_in[time_point].is_property_constructed('flow_vol_phase'):
             var_dict['Volumetric Flowrate @Inlet'] = (
                 self.feed_side.properties_in[time_point].flow_vol_phase['Liq'])
@@ -1155,8 +1159,8 @@ class ReverseOsmosisData(UnitModelBlockData):
                         rescale_variable(sb[t].mole_frac_phase_comp[j])
                     if sb[t].is_property_constructed('molality_comp'):
                         rescale_variable(sb[t].molality_comp[j])
-                if sb[t].is_property_constructed('pressure_osm'):
-                    rescale_variable(sb[t].pressure_osm)
+                if sb[t].is_property_constructed('pressure_osm_phase'):
+                    rescale_variable(sb[t].pressure_osm_phase['Liq'])
 
         # TODO: require users to set scaling factor for area or calculate it based on mass transfer and flux
         iscale.set_scaling_factor(self.area, 1e-1)

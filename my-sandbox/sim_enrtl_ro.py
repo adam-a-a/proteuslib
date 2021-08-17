@@ -83,6 +83,7 @@ import idaes.logger as idaeslog
 
 def dummy_method(b, *args, **kwargs):
     return 42
+
 # Configuration dictionary
 water_thermo_config = {
     "components": {
@@ -132,22 +133,24 @@ water_thermo_config = {
                     # End parameter_data
                     },
         "NaCl": {"type": Solute,
-                 "enth_mol_liq_comp": dummy_method},
+                 "enth_mol_liq_comp": dummy_method,
+                 "dens_mol_liq_comp": dummy_method
+                 },
         # "CaSO4": {"type": Apparent,
         #          "dissociation_species": {"Ca_2+": 1, "SO4_2-": 1}},
         # "Ca_2+": {"type": Solute,
         #           },
         # "SO4_2-": {"type": Solute,
         #           },
-        "Na+": {"type": Cation,
-                "charge": +1
-                },
-        "Cl-": {"type": Anion,
-                "charge": -1
+        # "Na+": {"type": Cation,
+        #         "charge": +1
+        #         },
+        # "Cl-": {"type": Anion,
+        #         "charge": -1
                },
         # "Mg_2+": {"type": Solute,
         #         }
-                },  # End Component list
+        #         },  # End Component list
         "phases":  {'Liq': {"type": AqueousPhase,
                             "equation_of_state": ENRTL,
                             "equation_of_state_options": {
@@ -174,7 +177,7 @@ m = ConcreteModel()
 m.fs = FlowsheetBlock(default={'dynamic': False})
 m.fs.properties = GenericParameterBlock(default=water_thermo_config)
 m.fs.ro = ReverseOsmosis0D(default={"property_package": m.fs.properties,
-                                      "has_pressure_change": True,
-                                      "concentration_polarization_type": ConcentrationPolarizationType.calculated,
-                                      "mass_transfer_coefficient": MassTransferCoefficient.calculated,
-                                      "pressure_change_type": PressureChangeType.calculated})
+                                    "has_pressure_change": True,
+                                    "concentration_polarization_type": ConcentrationPolarizationType.calculated,
+                                    "mass_transfer_coefficient": MassTransferCoefficient.calculated,
+                                    "pressure_change_type": PressureChangeType.calculated})
