@@ -282,6 +282,7 @@ class ReverseOsmosisData(UnitModelBlockData):
         solute_set = self.config.property_package.solute_set
         molecular_set = solute_set | solvent_set
 
+
         # Check configuration errors
         self._process_config()
 
@@ -623,8 +624,9 @@ class ReverseOsmosisData(UnitModelBlockData):
                         * ((prop_feed.pressure - prop_perm.pressure)
                            - (prop_feed_inter.pressure_osm_phase['Liq'] - prop_perm.pressure_osm_phase['Liq'])))
             elif comp.is_solute():
+                mw = self.config.property_package.get_component(j).mw
                 return (b.flux_mass_io_phase_comp[t, x, p, j] == b.B_comp[t, j]
-                        * (prop_feed_inter.conc_mass_phase_comp[p, j] - prop_perm.conc_mass_phase_comp[p, j]))
+                        * mw * (prop_feed_inter.conc_mol_phase_comp[p, j] - prop_perm.conc_mol_phase_comp[p, j]))
 
         # Feed and permeate-side connection
         @self.Constraint(self.flowsheet().config.time,
@@ -697,6 +699,7 @@ class ReverseOsmosisData(UnitModelBlockData):
                                    solute_set,
                                    doc="Concentration polarization")
         def eq_concentration_polarization_io(b, t, x, j):
+            mw = self.config.property_package.get_component(j).mw
             if x == 'in':
                 prop_io = b.properties_in[t]
                 prop_interface_io = b.properties_interface_in[t]
@@ -704,17 +707,17 @@ class ReverseOsmosisData(UnitModelBlockData):
                 prop_io = b.properties_out[t]
                 prop_interface_io = b.properties_interface_out[t]
             if self.config.concentration_polarization_type == ConcentrationPolarizationType.none:
-                return prop_interface_io.conc_mass_phase_comp['Liq', j] == \
-                       prop_io.conc_mass_phase_comp['Liq', j]
+                return (prop_interface_io.conc_mol_phase_comp['Liq', j] * mw ==
+                        mw * prop_io.conc_mol_phase_comp['Liq', j])
             elif self.config.concentration_polarization_type == ConcentrationPolarizationType.fixed:
-                return (prop_interface_io.conc_mass_phase_comp['Liq', j] ==
-                        prop_io.conc_mass_phase_comp['Liq', j]
+                return (prop_interface_io.conc_mol_phase_comp['Liq', j] * mw ==
+                        mw * prop_io.conc_mol_phase_comp['Liq', j]
                         * self.cp_modulus[t, j])
             elif self.config.concentration_polarization_type == ConcentrationPolarizationType.calculated:
                 jw = self.flux_mass_io_phase_comp[t, x, 'Liq', 'H2O'] / self.dens_solvent
                 js = self.flux_mass_io_phase_comp[t, x, 'Liq', j]
-                return (prop_interface_io.conc_mass_phase_comp['Liq', j] ==
-                        prop_io.conc_mass_phase_comp['Liq', j] * exp(jw / self.Kf_io[t, x, j])
+                return (prop_interface_io.conc_mol_phase_comp['Liq', j] * mw ==
+                        mw * prop_io.conc_mol_phase_comp['Liq', j] * exp(jw / self.Kf_io[t, x, j])
                         - js / jw * (exp(jw / self.Kf_io[t, x, j]) - 1))
 
         # Mass transfer coefficient calculation
@@ -890,9 +893,11 @@ class ReverseOsmosisData(UnitModelBlockData):
         @self.Constraint(self.flowsheet().config.time,
                          solute_set)
         def eq_rejection_phase_comp(b, t, j):
+            mw = self.config.property_package.get_component(j).mw
             return (b.rejection_phase_comp[t, 'Liq', j] ==
-                    1 - (b.permeate_side.properties_mixed[t].conc_mass_phase_comp['Liq', j] /
-                         b.feed_side.properties_in[t].conc_mass_phase_comp['Liq', j]))
+                    1 - (mw * b.permeate_side.properties_mixed[t].conc_mol_phase_comp['Liq', j] /
+                         mw /
+                         b.feed_side.properties_in[t].conc_mol_phase_comp['Liq', j]))
 
         @self.Constraint(self.flowsheet().config.time)
         def eq_over_pressure_ratio(b, t):
@@ -1077,21 +1082,22 @@ class ReverseOsmosisData(UnitModelBlockData):
             var_dict["Velocity @Inlet"] = self.velocity_io[time_point, 'in']
             var_dict["Velocity @Outlet"] = self.velocity_io[time_point, 'out']
         for j in self.config.property_package.solute_set:
+            mw = self.config.property_package.get_component(j).mw
             cin_mem_name=f'{j} Concentration @Inlet,Membrane-Interface '
-            var_dict[cin_mem_name] = (
-                        self.feed_side.properties_interface_in[time_point].conc_mass_phase_comp['Liq', j])
+            var_dict[cin_mem_name] = (mw *
+                        self.feed_side.properties_interface_in[time_point].conc_mol_phase_comp['Liq', j])
             cout_mem_name=f'{j} Concentration @Outlet,Membrane-Interface '
-            var_dict[cout_mem_name] = (
-                self.feed_side.properties_interface_out[time_point].conc_mass_phase_comp['Liq', j])
+            var_dict[cout_mem_name] = (mw *
+                self.feed_side.properties_interface_out[time_point].conc_mol_phase_comp['Liq', j])
             cin_bulk_name=f'{j} Concentration @Inlet,Bulk '
-            var_dict[cin_bulk_name] = (
-                        self.feed_side.properties_in[time_point].conc_mass_phase_comp['Liq', j])
+            var_dict[cin_bulk_name] = (mw *
+                        self.feed_side.properties_in[time_point].conc_mol_phase_comp['Liq', j])
             cout_bulk_name=f'{j} Concentration @Outlet,Bulk '
-            var_dict[cout_bulk_name] = (
-                self.feed_side.properties_out[time_point].conc_mass_phase_comp['Liq', j])
+            var_dict[cout_bulk_name] = (mw *
+                self.feed_side.properties_out[time_point].conc_mol_phase_comp['Liq', j])
             cp_name=f'{j} Permeate Concentration '
-            var_dict[cp_name] = (
-                self.permeate_side.properties_mixed[time_point].conc_mass_phase_comp['Liq', j])
+            var_dict[cp_name] = (mw *
+                self.permeate_side.properties_mixed[time_point].conc_mol_phase_comp['Liq', j])
         if self.feed_side.properties_interface_out[time_point].is_property_constructed('pressure_osm_phase'):
             var_dict['Osmotic Pressure @Outlet,Membrane-Interface '] = (
                 self.feed_side.properties_interface_out[time_point].pressure_osm_phase['Liq'])
@@ -1151,8 +1157,8 @@ class ReverseOsmosisData(UnitModelBlockData):
                     rescale_variable(sb[t].flow_mass_phase_comp['Liq', j])
                     if sb[t].is_property_constructed('mass_frac_phase_comp'):
                         rescale_variable(sb[t].mass_frac_phase_comp['Liq', j])
-                    if sb[t].is_property_constructed('conc_mass_phase_comp'):
-                        rescale_variable(sb[t].conc_mass_phase_comp['Liq', j])
+                    if sb[t].is_property_constructed('conc_mol_phase_comp'):
+                        rescale_variable(sb[t].conc_mol_phase_comp['Liq', j])
                     if sb[t].is_property_constructed('mole_frac_phase_comp'):
                         rescale_variable(sb[t].mole_frac_phase_comp[j])
                     if sb[t].is_property_constructed('molality_comp'):
@@ -1278,8 +1284,10 @@ class ReverseOsmosisData(UnitModelBlockData):
                           * iscale.get_scaling_factor(prop_io.pressure))
                     iscale.set_scaling_factor(v, sf)
                 elif comp.is_solute():  # scaling based on solute flux equation
+                    mw = self.config.property_package.get_component(j).mw
                     sf = (iscale.get_scaling_factor(self.B_comp[t, j])
-                          * iscale.get_scaling_factor(self.feed_side.properties_in[t].conc_mass_phase_comp[p, j]))
+                          * iscale.get_scaling_factor(self.feed_side.properties_in[t].conc_mol_phase_comp[p, j])
+                          / mw)
                     iscale.set_scaling_factor(v, sf)
 
         for (t, p, j), v in self.feed_side.mass_transfer_term.items():
@@ -1359,7 +1367,8 @@ class ReverseOsmosisData(UnitModelBlockData):
                 prop_interface_io = self.feed_side.properties_interface_in[t]
             elif x == 'out':
                 prop_interface_io = self.feed_side.properties_interface_out[t]
-            sf = iscale.get_scaling_factor(prop_interface_io.conc_mass_phase_comp['Liq', j])
+            mw = self.config.property_package.get_component(j).mw
+            sf = iscale.get_scaling_factor(prop_interface_io.conc_mol_phase_comp['Liq', j]) / mw
             iscale.constraint_scaling_transform(c, sf)
 
         if hasattr(self, 'eq_Kf_io'):

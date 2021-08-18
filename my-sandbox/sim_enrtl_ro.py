@@ -135,8 +135,9 @@ water_thermo_config = {
                     },
         "TDS": {"type": Solute,
                  # "enth_mol_liq_comp": dummy_method,
-                 "dens_mol_liq_comp": dummy_method
-                 "mw": 58.54e-3 * pyunits.kg/ pyunits.mol
+                 "dens_mol_liq_comp": dummy_method,
+                 "parameter_data": {
+                                    "mw": 58.44e-3 * pyunits.kg/ pyunits.mol}
                  },
         # "CaSO4": {"type": Apparent,
         #          "dissociation_species": {"Ca_2+": 1, "SO4_2-": 1}},
