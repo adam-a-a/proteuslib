@@ -75,6 +75,7 @@ from idaes.generic_models.unit_models.equilibrium_reactor import EquilibriumReac
 # Import the core idaes objects for Flowsheets and types of balances
 from idaes.core import FlowsheetBlock
 from proteuslib.unit_models.reverse_osmosis_0D import ReverseOsmosis0D, ConcentrationPolarizationType, MassTransferCoefficient, PressureChangeType
+# from proteuslib.unit_models.reverse_osmosis_1D import ReverseOsmosis1D, PressureChangeType, ConcentrationPolarizationType, MassTransferCoefficient
 
 # Import log10 function from pyomo
 from pyomo.environ import log10
@@ -90,7 +91,7 @@ water_thermo_config = {
         'H2O': {"type": Solvent,
               # Define the methods used to calculate the following properties
               "dens_mol_liq_comp": Perrys,
-              "enth_mol_liq_comp": Perrys,
+              # "enth_mol_liq_comp": Perrys,
               "cp_mol_liq_comp": Perrys,
               "entr_mol_liq_comp": Perrys,
               "relative_permittivity_liq_comp": relative_permittivity_constant,
@@ -132,9 +133,10 @@ water_thermo_config = {
                                 },
                     # End parameter_data
                     },
-        "NaCl": {"type": Solute,
-                 "enth_mol_liq_comp": dummy_method,
+        "TDS": {"type": Solute,
+                 # "enth_mol_liq_comp": dummy_method,
                  "dens_mol_liq_comp": dummy_method
+                 "mw": 58.54e-3 * pyunits.kg/ pyunits.mol
                  },
         # "CaSO4": {"type": Apparent,
         #          "dissociation_species": {"Ca_2+": 1, "SO4_2-": 1}},
@@ -142,15 +144,17 @@ water_thermo_config = {
         #           },
         # "SO4_2-": {"type": Solute,
         #           },
-        # "Na+": {"type": Cation,
-        #         "charge": +1
-        #         },
-        # "Cl-": {"type": Anion,
-        #         "charge": -1
+        "Na+": {"type": Cation,
+                "charge": +1,
+                # "enth_mol_liq_comp": dummy_method
+                },
+        "Cl-": {"type": Anion,
+                "charge": -1,
+                # "enth_mol_liq_comp": dummy_method
                },
         # "Mg_2+": {"type": Solute,
         #         }
-        #         },  # End Component list
+                },  # End Component list
         "phases":  {'Liq': {"type": AqueousPhase,
                             "equation_of_state": ENRTL,
                             "equation_of_state_options": {

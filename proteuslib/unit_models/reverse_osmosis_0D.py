@@ -280,8 +280,8 @@ class ReverseOsmosisData(UnitModelBlockData):
 
         solvent_set = self.config.property_package.solvent_set
         solute_set = self.config.property_package.solute_set
-        for j in self.config.property_package.component_list:
-            print(j)
+        molecular_set = solute_set | solvent_set
+
         # Check configuration errors
         self._process_config()
 
@@ -317,11 +317,9 @@ class ReverseOsmosisData(UnitModelBlockData):
 
         def flux_mass_io_phase_comp_bounds(b, t, io, p, j):
             if j in b.config.property_package.solvent_set:
-                print("SOLVENT MADE IT")
                 ub = 3e-2
                 lb = 1e-4
             elif j in self.config.property_package.solute_set:
-                print("SOLUTE MADE IT")
                 ub = 1e-3
                 lb = 1e-8
             return lb, ub
@@ -330,7 +328,7 @@ class ReverseOsmosisData(UnitModelBlockData):
             self.flowsheet().config.time,
             self.io_list,
             self.config.property_package.phase_list,
-            self.config.property_package.component_list,
+            molecular_set,
             initialize=flux_mass_io_phase_comp_initialize,
             bounds=flux_mass_io_phase_comp_bounds,
             units=units_meta('mass')*units_meta('length')**-2*units_meta('time')**-1,
@@ -360,7 +358,7 @@ class ReverseOsmosisData(UnitModelBlockData):
         self.recovery_mass_phase_comp = Var(
             self.flowsheet().config.time,
             self.config.property_package.phase_list,
-            self.config.property_package.component_list,
+            molecular_set,
             initialize=recovery_mass_phase_comp_initialize,
             bounds=recovery_mass_phase_comp_bounds,
             units=pyunits.dimensionless,
@@ -520,9 +518,9 @@ class ReverseOsmosisData(UnitModelBlockData):
             balance_type=self.config.material_balance_type,
             has_mass_transfer=True)
 
-        self.feed_side.add_energy_balances(
-            balance_type=self.config.energy_balance_type,
-            has_enthalpy_transfer=True)
+        # self.feed_side.add_energy_balances(
+        #     balance_type=self.config.energy_balance_type,
+        #     has_enthalpy_transfer=True)
 
         self.feed_side.add_momentum_balances(
             balance_type=self.config.momentum_balance_type,
@@ -575,7 +573,7 @@ class ReverseOsmosisData(UnitModelBlockData):
         self.mass_transfer_phase_comp = Var(
             self.flowsheet().config.time,
             self.config.property_package.phase_list,
-            self.config.property_package.component_list,
+            molecular_set,
             initialize=mass_transfer_phase_comp_initialize,
             bounds=(1e-8, 1e6),
             domain=NonNegativeReals,
@@ -584,7 +582,7 @@ class ReverseOsmosisData(UnitModelBlockData):
 
         @self.Constraint(self.flowsheet().config.time,
                          self.config.property_package.phase_list,
-                         self.config.property_package.component_list,
+                         molecular_set,
                          doc="Mass transfer term")
         def eq_mass_transfer_term(self, t, p, j):
             return self.mass_transfer_phase_comp[t, p, j] == -self.feed_side.mass_transfer_term[t, p, j]
@@ -592,14 +590,14 @@ class ReverseOsmosisData(UnitModelBlockData):
         # RO performance equations
         @self.Expression(self.flowsheet().config.time,
                          self.config.property_package.phase_list,
-                         self.config.property_package.component_list,
+                         molecular_set,
                          doc="Average flux expression")
         def flux_mass_phase_comp_avg(b, t, p, j):
             return 0.5 * sum(b.flux_mass_io_phase_comp[t, x, p, j] for x in self.io_list)
 
         @self.Constraint(self.flowsheet().config.time,
                          self.config.property_package.phase_list,
-                         self.config.property_package.component_list,
+                         molecular_set,
                          doc="Permeate production")
         def eq_permeate_production(b, t, p, j):
             return (b.permeate_side.properties_mixed[t].get_material_flow_terms(p, j)
@@ -608,7 +606,7 @@ class ReverseOsmosisData(UnitModelBlockData):
         @self.Constraint(self.flowsheet().config.time,
                          self.io_list,
                          self.config.property_package.phase_list,
-                         self.config.property_package.component_list,
+                         molecular_set,
                          doc="Water and salt flux")
         def eq_flux_io(b, t, x, p, j):
             if x == 'in':
@@ -631,17 +629,17 @@ class ReverseOsmosisData(UnitModelBlockData):
         # Feed and permeate-side connection
         @self.Constraint(self.flowsheet().config.time,
                          self.config.property_package.phase_list,
-                         self.config.property_package.component_list,
+                         molecular_set,
                          doc="Mass transfer from feed to permeate")
         def eq_connect_mass_transfer(b, t, p, j):
             return (b.permeate_side.properties_mixed[t].get_material_flow_terms(p, j)
                     == -b.feed_side.mass_transfer_term[t, p, j])
 
-        @self.Constraint(self.flowsheet().config.time,
-                         doc="Enthalpy transfer from feed to permeate")
-        def eq_connect_enthalpy_transfer(b, t):
-            return (b.permeate_side.properties_mixed[t].get_enthalpy_flow_terms('Liq')
-                    == -b.feed_side.enthalpy_transfer[t])
+        # @self.Constraint(self.flowsheet().config.time,
+        #                  doc="Enthalpy transfer from feed to permeate")
+        # def eq_connect_enthalpy_transfer(b, t):
+        #     return (b.permeate_side.properties_mixed[t].get_enthalpy_flow_terms('Liq')
+        #             == -b.feed_side.enthalpy_transfer[t])
 
         @self.Constraint(self.flowsheet().config.time,
                          doc="Isothermal assumption for permeate")
@@ -661,7 +659,7 @@ class ReverseOsmosisData(UnitModelBlockData):
                 prop_io = b.properties_out[t]
             return (prop_io.mass_frac_phase_comp['Liq', j]
                     * sum(self.flux_mass_io_phase_comp[t, x, 'Liq', jj]
-                          for jj in self.config.property_package.component_list)
+                          for jj in molecular_set)
                     == self.flux_mass_io_phase_comp[t, x, 'Liq', j])
         @self.permeate_side.Constraint(self.flowsheet().config.time,
                                    self.io_list,
@@ -883,7 +881,7 @@ class ReverseOsmosisData(UnitModelBlockData):
                     b.feed_side.properties_in[t].flow_vol_phase['Liq'])
 
         @self.Constraint(self.flowsheet().config.time,
-                         self.config.property_package.component_list)
+                         molecular_set)
         def eq_recovery_mass_phase_comp(b, t, j):
             return (b.recovery_mass_phase_comp[t, 'Liq', j] ==
                     b.permeate_side.properties_mixed[t].flow_mass_phase_comp['Liq', j] /
@@ -1316,9 +1314,9 @@ class ReverseOsmosisData(UnitModelBlockData):
             sf = iscale.get_scaling_factor(self.mass_transfer_phase_comp[ind])
             iscale.constraint_scaling_transform(c, sf)
 
-        for ind, c in self.eq_connect_enthalpy_transfer.items():
-            sf = iscale.get_scaling_factor(self.feed_side.enthalpy_transfer[ind])
-            iscale.constraint_scaling_transform(c, sf)
+        # for ind, c in self.eq_connect_enthalpy_transfer.items():
+        #     sf = iscale.get_scaling_factor(self.feed_side.enthalpy_transfer[ind])
+        #     iscale.constraint_scaling_transform(c, sf)
 
         for t, c in self.eq_permeate_isothermal.items():
             sf = iscale.get_scaling_factor(self.feed_side.properties_in[t].temperature)
