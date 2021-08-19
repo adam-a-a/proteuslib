@@ -25,7 +25,7 @@ from idaes.core.phases import PhaseType as PT
 # Imports from idaes generic models
 import idaes.generic_models.properties.core.pure.Perrys as Perrys
 from idaes.generic_models.properties.core.pure.electrolyte import relative_permittivity_constant
-from idaes.generic_models.properties.core.state_definitions import FTPx
+from idaes.generic_models.properties.core.state_definitions import FTPx, FcTP
 from idaes.generic_models.properties.core.eos.enrtl import ENRTL
 from idaes.generic_models.properties.core.eos.enrtl_reference_states import Unsymmetric
 
@@ -101,9 +101,25 @@ def rule_diffus_phase_comp(b, p, j):  # diffusivity, eq 6 in Bartholomew
     mass_frac_phase_comp = b.conc_mol_phase_comp['Liq', j] * mw / b.dens_mass_phase['Liq']
     return b.diffus_phase_comp[p, j] == (1.53e-7* mass_frac_phase_comp ** 4
                                          + (-1.22e-7) * mass_frac_phase_comp ** 3
-                                         + (3.01e-8) * mass_frac_phase_comp ** 2
+                                         + 3.01e-8 * mass_frac_phase_comp ** 2
                                          + (-1.22e-7) * mass_frac_phase_comp
                                          + 1.53e-7)
+
+
+def rule_visc_d_phase(b, p):  # dynamic viscosity, eq 5 in Bartholomew
+    # visc_d_param_dict = {'0': 9.80E-4, '1': 2.15E-3}
+    # self.visc_d_param = Var(
+    #     visc_d_param_dict.keys(),
+    #     domain=Reals,
+    #     initialize=visc_d_param_dict,
+    #     units=pyunits.Pa * pyunits.s,
+    #     doc='Dynamic viscosity parameters')
+    for j in b.params.solute_set:
+        mw = b.params.get_component(j).mw
+        mass_frac_phase_comp = b.conc_mol_phase_comp['Liq', j] * mw / b.dens_mass_phase['Liq']
+        return (b.visc_d_phase['Liq'] ==
+                2.15E-3 * mass_frac_phase_comp
+                + 9.80E-4)
 
 # Configuration dictionary
 water_thermo_config = {
@@ -184,16 +200,16 @@ water_thermo_config = {
                             "equation_of_state": ENRTL,
                             "equation_of_state_options": {
                                     "reference_state": Unsymmetric},
-                            "diffus_phase_comp": rule_diffus_phase_comp
-                            "visc_d_phase":
+                            "diffus_phase_comp": rule_diffus_phase_comp,
+                            "visc_d_phase": rule_visc_d_phase
 
                             },
                     },
-        "state_definition": FTPx,
-        "state_bounds": {"flow_mol": (0, 50, 100),
-                         "temperature": (273.15, 300, 650),
-                         "pressure": (5e4, 1e5, 1e6)
-                     },
+        "state_definition": FcTP,
+        "state_bounds": {"flow_mol_comp": (0, 100, 1000, pyunits.mol/pyunits.s),
+                         "temperature": (273.15, 300, 500, pyunits.K),
+                         "pressure": (5e4, 1e5, 1e6, pyunits.Pa)
+                        },
         "pressure_ref": 1e5,
         "temperature_ref": 300,
         "base_units": {"time": pyunits.s,
@@ -208,8 +224,47 @@ water_thermo_config = {
 m = ConcreteModel()
 m.fs = FlowsheetBlock(default={'dynamic': False})
 m.fs.properties = GenericParameterBlock(default=water_thermo_config)
-m.fs.ro = ReverseOsmosis0D(default={"property_package": m.fs.properties,
+m.fs.unit = ReverseOsmosis0D(default={"property_package": m.fs.properties,
                                     "has_pressure_change": True,
                                     "concentration_polarization_type": ConcentrationPolarizationType.calculated,
                                     "mass_transfer_coefficient": MassTransferCoefficient.calculated,
                                     "pressure_change_type": PressureChangeType.calculated})
+
+mw_tds= 58.44e-3
+mw_h2o= 18e-3
+feed_flow_mass = 1
+feed_mass_frac_NaCl = 0.035
+feed_pressure = 60e5
+feed_temperature = 273.15 + 25
+membrane_pressure_drop = 3e5
+membrane_area = 19
+A = 4.2e-12
+B = 3.5e-8
+pressure_atmospheric = 101325
+concentration_polarization_modulus = 1.1
+ro = m.fs.unit
+feed_mass_frac_H2O = 1 - feed_mass_frac_NaCl
+
+tds_mol_flow = feed_flow_mass * feed_mass_frac_NaCl / mw_tds
+h2o_mol_flow = feed_flow_mass * feed_mass_frac_H2O / mw_h2o
+m.fs.unit.inlet.flow_mol_comp[0, 'TDS'].fix(tds_mol_flow)
+m.fs.unit.inlet.flow_mol_comp[0, 'H2O'].fix(h2o_mol_flow)
+m.fs.unit.inlet.pressure[0].fix(feed_pressure)
+m.fs.unit.inlet.temperature[0].fix(feed_temperature)
+
+m.fs.unit.A_comp.fix(A)
+m.fs.unit.B_comp.fix(B)
+m.fs.unit.permeate.pressure[0].fix(pressure_atmospheric)
+# m.fs.unit.cp_modulus.fix(concentration_polarization_modulus)
+m.fs.unit.channel_height.fix(0.001)
+m.fs.unit.spacer_porosity.fix(0.97)
+m.fs.unit.length.fix(16)
+m.fs.unit.recovery_vol_phase.fix(.4)
+
+
+m.fs.properties.set_default_scaling('conc_mol_phase_comp', 1, index=('Liq', 'H2O'))
+m.fs.properties.set_default_scaling('conc_mol_phase_comp', 1e2, index=('Liq', 'NaCl'))
+# Calculate scaling factors for all other variables.
+iscale.calculate_scaling_factors(m)
+print(degrees_of_freedom(m))
+# assert degrees_of_freedom(m) == 0

@@ -779,7 +779,7 @@ class ReverseOsmosisData(UnitModelBlockData):
                 elif x == 'out':
                     prop_io = b.feed_side.properties_out[t]
                 return (b.N_Re_io[t, x] * b.area_cross * prop_io.visc_d_phase['Liq'] ==
-                        sum(prop_io.flow_mass_phase_comp['Liq', j] for j in b.config.property_package.component_list)
+                        prop_io.dens_mass_phase['Liq'] * b.velocity_io[t, x]
                         * b.dh)
 
             @self.Constraint(doc="Hydraulic diameter")  # eqn. 17 in Schock & Miquel, 1987
@@ -889,12 +889,12 @@ class ReverseOsmosisData(UnitModelBlockData):
                     b.permeate_side.properties_mixed[t].flow_vol_phase['Liq'] /
                     b.feed_side.properties_in[t].flow_vol_phase['Liq'])
 
-        @self.Constraint(self.flowsheet().config.time,
-                         molecular_set)
-        def eq_recovery_mass_phase_comp(b, t, j):
-            return (b.recovery_mass_phase_comp[t, 'Liq', j] ==
-                    b.permeate_side.properties_mixed[t].flow_mass_phase_comp['Liq', j] /
-                    b.feed_side.properties_in[t].flow_mass_phase_comp['Liq', j])
+        # @self.Constraint(self.flowsheet().config.time,
+        #                  molecular_set)
+        # def eq_recovery_mass_phase_comp(b, t, j):
+        #     return (b.recovery_mass_phase_comp[t, 'Liq', j] ==
+        #             b.permeate_side.properties_mixed[t].flow_mass_phase_comp['Liq', j] /
+        #             b.feed_side.properties_in[t].flow_mass_phase_comp['Liq', j])
 
         @self.Constraint(self.flowsheet().config.time,
                          solute_set)
@@ -1151,26 +1151,27 @@ class ReverseOsmosisData(UnitModelBlockData):
         super().calculate_scaling_factors()
 
         # permeate properties need to rescale solute values by 100
-        def rescale_variable(var, factor=100):
-            sf = iscale.get_scaling_factor(var)
-            iscale.set_scaling_factor(var, sf * factor)
-
-        blk = self.permeate_side
-        for sb_str in ['properties_in', 'properties_out', 'properties_mixed']:
-            sb = getattr(blk, sb_str)
-            for t in self.flowsheet().config.time:
-                for j in self.config.property_package.solute_set:
-                    rescale_variable(sb[t].flow_mass_phase_comp['Liq', j])
-                    if sb[t].is_property_constructed('mass_frac_phase_comp'):
-                        rescale_variable(sb[t].mass_frac_phase_comp['Liq', j])
-                    if sb[t].is_property_constructed('conc_mol_phase_comp'):
-                        rescale_variable(sb[t].conc_mol_phase_comp['Liq', j])
-                    if sb[t].is_property_constructed('mole_frac_phase_comp'):
-                        rescale_variable(sb[t].mole_frac_phase_comp[j])
-                    if sb[t].is_property_constructed('molality_comp'):
-                        rescale_variable(sb[t].molality_comp[j])
-                if sb[t].is_property_constructed('pressure_osm_phase'):
-                    rescale_variable(sb[t].pressure_osm_phase['Liq'])
+        # def rescale_variable(var, factor=100):
+        #     sf = iscale.get_scaling_factor(var)
+        #     iscale.set_scaling_factor(var, sf * factor)
+        #
+        # blk = self.permeate_side
+        # # for sb_str in ['properties_in', 'properties_out', 'properties_mixed']:
+        # #     sb = getattr(blk, sb_str)
+        # #     # for t in self.flowsheet().config.time:
+        # #     #     for j in self.config.property_package.solute_set:
+        # #     #         if sb[t].is_property_constructed('flow_mass_phase_comp'):
+        # #     #             rescale_variable(sb[t].flow_mass_phase_comp['Liq', j])
+        # #     #         if sb[t].is_property_constructed('mass_frac_phase_comp'):
+        # #     #             rescale_variable(sb[t].mass_frac_phase_comp['Liq', j])
+        # #     #         if sb[t].is_property_constructed('conc_mol_phase_comp'):
+        # #     #             rescale_variable(sb[t].conc_mol_phase_comp['Liq', j])
+        # #     #         if sb[t].is_property_constructed('mole_frac_phase_comp'):
+        # #     #             rescale_variable(sb[t].mole_frac_phase_comp[j])
+        # #     #         if sb[t].is_property_constructed('molality_comp'):
+        # #     #             rescale_variable(sb[t].molality_comp[j])
+        # #     #     if sb[t].is_property_constructed('pressure_osm_phase'):
+        # #     #         rescale_variable(sb[t].pressure_osm_phase['Liq'])
 
         # TODO: require users to set scaling factor for area or calculate it based on mass transfer and flux
         iscale.set_scaling_factor(self.area, 1e-1)
@@ -1227,12 +1228,12 @@ class ReverseOsmosisData(UnitModelBlockData):
                     iscale.set_scaling_factor(self.N_Re_io[t, x], 1e-3)
 
         if hasattr(self, 'N_Sc_io_comp'):
-            for t, x in self.N_Sc_io_comp.keys():
+            for t, x, j in self.N_Sc_io_comp.keys():
                 if iscale.get_scaling_factor(self.N_Sc_io_comp[t, x, j]) is None:
                     iscale.set_scaling_factor(self.N_Sc_io_comp[t, x, j], 1e-3)
 
         if hasattr(self, 'N_Sh_io_comp'):
-            for t, x in self.N_Sh_io_comp.keys():
+            for t, x, j in self.N_Sh_io_comp.keys():
                 if iscale.get_scaling_factor(self.N_Sh_io_comp[t, x, j]) is None:
                      iscale.set_scaling_factor(self.N_Sh_io_comp[t, x, j], 1e-2)
 
