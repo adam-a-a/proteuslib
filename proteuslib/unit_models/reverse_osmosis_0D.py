@@ -438,17 +438,19 @@ class ReverseOsmosisData(UnitModelBlockData):
                 units=pyunits.dimensionless,
                 doc="Reynolds number at inlet and outlet")
         if self.config.mass_transfer_coefficient == MassTransferCoefficient.calculated:
-            self.N_Sc_io = Var(
+            self.N_Sc_io_comp = Var(
                 self.flowsheet().config.time,
                 self.io_list,
+                solute_set,
                 initialize=5e2,
                 bounds=(1e2, 2e3),
                 domain=NonNegativeReals,
                 units=pyunits.dimensionless,
                 doc="Schmidt number at inlet and outlet")
-            self.N_Sh_io = Var(
+            self.N_Sh_io_comp = Var(
                 self.flowsheet().config.time,
                 self.io_list,
+                solute_set,
                 initialize=1e2,
                 bounds=(1, 3e2),
                 domain=NonNegativeReals,
@@ -655,11 +657,13 @@ class ReverseOsmosisData(UnitModelBlockData):
                                    solute_set,
                                    doc="Permeate mass fraction")
         def eq_mass_frac_permeate_io(b, t, x, j):
+            mw = self.config.property_package.get_component(j).mw
             if x == 'in':
                 prop_io = b.properties_in[t]
             elif x == 'out':
                 prop_io = b.properties_out[t]
-            return (prop_io.mass_frac_phase_comp['Liq', j]
+            return (prop_io.conc_mol_phase_comp['Liq', j]
+                    * mw / prop_io.dens_mass_phase['Liq']
                     * sum(self.flux_mass_io_phase_comp[t, x, 'Liq', jj]
                           for jj in molecular_set)
                     == self.flux_mass_io_phase_comp[t, x, 'Liq', j])
@@ -732,25 +736,27 @@ class ReverseOsmosisData(UnitModelBlockData):
                 elif x == 'out':
                     prop_io = b.feed_side.properties_out[t]
                 return (b.Kf_io[t, x, j] * b.dh ==
-                        prop_io.diffus_phase['Liq']
-                        * b.N_Sh_io[t, x])
+                        prop_io.diffus_phase_comp['Liq', j]
+                        * b.N_Sh_io_comp[t, x, j])
 
             @self.Constraint(self.flowsheet().config.time,
                                        self.io_list,
+                                       solute_set,
                                        doc="Sherwood number")
-            def eq_N_Sh_io(b, t, x):
-                return (b.N_Sh_io[t, x] ==
-                        0.46 * (b.N_Re_io[t, x] * b.N_Sc_io[t, x])**0.36)
+            def eq_N_Sh_io_comp(b, t, x, j):
+                return (b.N_Sh_io_comp[t, x, j] ==
+                        0.46 * (b.N_Re_io[t, x] * b.N_Sc_io_comp[t, x, j])**0.36)
 
             @self.Constraint(self.flowsheet().config.time,
                                        self.io_list,
+                                       solute_set,
                                        doc="Schmidt number")
-            def eq_N_Sc_io(b, t, x):
+            def eq_N_Sc_io_comp(b, t, x, j):
                 if x == 'in':
                     prop_io = b.feed_side.properties_in[t]
                 elif x == 'out':
                     prop_io = b.feed_side.properties_out[t]
-                return (b.N_Sc_io[t, x] * prop_io.dens_mass_phase['Liq'] * prop_io.diffus_phase['Liq'] ==
+                return (b.N_Sc_io_comp[t, x, j] * prop_io.dens_mass_phase['Liq'] * prop_io.diffus_phase_comp['Liq', j] ==
                         prop_io.visc_d_phase['Liq'])
 
         if hasattr(self, 'length') or hasattr(self, 'width'):
@@ -1220,15 +1226,15 @@ class ReverseOsmosisData(UnitModelBlockData):
                 if iscale.get_scaling_factor(self.N_Re_io[t, x]) is None:
                     iscale.set_scaling_factor(self.N_Re_io[t, x], 1e-3)
 
-        if hasattr(self, 'N_Sc_io'):
-            for t, x in self.N_Sc_io.keys():
-                if iscale.get_scaling_factor(self.N_Sc_io[t, x]) is None:
-                    iscale.set_scaling_factor(self.N_Sc_io[t, x], 1e-3)
+        if hasattr(self, 'N_Sc_io_comp'):
+            for t, x in self.N_Sc_io_comp.keys():
+                if iscale.get_scaling_factor(self.N_Sc_io_comp[t, x, j]) is None:
+                    iscale.set_scaling_factor(self.N_Sc_io_comp[t, x, j], 1e-3)
 
-        if hasattr(self, 'N_Sh_io'):
-            for t, x in self.N_Sh_io.keys():
-                if iscale.get_scaling_factor(self.N_Sh_io[t, x]) is None:
-                     iscale.set_scaling_factor(self.N_Sh_io[t, x], 1e-2)
+        if hasattr(self, 'N_Sh_io_comp'):
+            for t, x in self.N_Sh_io_comp.keys():
+                if iscale.get_scaling_factor(self.N_Sh_io_comp[t, x, j]) is None:
+                     iscale.set_scaling_factor(self.N_Sh_io_comp[t, x, j], 1e-2)
 
         if hasattr(self, 'length'):
             if iscale.get_scaling_factor(self.length) is None:
@@ -1381,14 +1387,14 @@ class ReverseOsmosisData(UnitModelBlockData):
                 sf = iscale.get_scaling_factor(self.N_Re_io[ind])
                 iscale.constraint_scaling_transform(c, sf)
 
-        if hasattr(self, 'eq_N_Sc_io'):
-            for ind, c in self.eq_N_Sc_io.items():
-                sf = iscale.get_scaling_factor(self.N_Sc_io[ind])
+        if hasattr(self, 'eq_N_Sc_io_comp'):
+            for ind, c in self.eq_N_Sc_io_comp.items():
+                sf = iscale.get_scaling_factor(self.N_Sc_io_comp[ind])
                 iscale.constraint_scaling_transform(c, sf)
 
-        if hasattr(self, 'eq_N_Sh_io'):
-            for ind, c in self.eq_N_Sh_io.items():
-                sf = iscale.get_scaling_factor(self.N_Sh_io[ind])
+        if hasattr(self, 'eq_N_Sh_io_comp'):
+            for ind, c in self.eq_N_Sh_io_comp.items():
+                sf = iscale.get_scaling_factor(self.N_Sh_io_comp[ind])
                 iscale.constraint_scaling_transform(c, sf)
 
         if hasattr(self, 'eq_area'):

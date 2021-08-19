@@ -15,7 +15,7 @@
 import pytest
 
 # Importing the object for units from pyomo
-from pyomo.environ import units as pyunits
+from pyomo.environ import units as pyunits, Reals, Param
 
 # Imports from idaes core
 from idaes.core import AqueousPhase
@@ -85,6 +85,26 @@ import idaes.logger as idaeslog
 def dummy_method(b, *args, **kwargs):
     return 42
 
+# TODO:
+
+def rule_diffus_phase_comp(b, p, j):  # diffusivity, eq 6 in Bartholomew
+    # diffus_param_dict = {'0': 1.51e-9, '1': -2.00e-9, '2': 3.01e-8,
+    #                      '3': -1.22e-7, '4': 1.53e-7}
+    #
+    # diffus_param = Param(
+    #     diffus_param_dict.keys(),
+    #     domain=Reals,
+    #     initialize=diffus_param_dict,
+    #     units=pyunits.m ** 2 / pyunits.s,
+    #     doc='Dynamic viscosity parameters')
+    mw = b.params.get_component(j).mw
+    mass_frac_phase_comp = b.conc_mol_phase_comp['Liq', j] * mw / b.dens_mass_phase['Liq']
+    return b.diffus_phase_comp[p, j] == (1.53e-7* mass_frac_phase_comp ** 4
+                                         + (-1.22e-7) * mass_frac_phase_comp ** 3
+                                         + (3.01e-8) * mass_frac_phase_comp ** 2
+                                         + (-1.22e-7) * mass_frac_phase_comp
+                                         + 1.53e-7)
+
 # Configuration dictionary
 water_thermo_config = {
     "components": {
@@ -147,10 +167,14 @@ water_thermo_config = {
         #           },
         "Na+": {"type": Cation,
                 "charge": +1,
+                "parameter_data": {
+                    "mw": 23e-3 * pyunits.kg / pyunits.mol}
                 # "enth_mol_liq_comp": dummy_method
                 },
         "Cl-": {"type": Anion,
                 "charge": -1,
+                "parameter_data": {
+                    "mw": 35e-3 * pyunits.kg / pyunits.mol}
                 # "enth_mol_liq_comp": dummy_method
                },
         # "Mg_2+": {"type": Solute,
@@ -159,7 +183,10 @@ water_thermo_config = {
         "phases":  {'Liq': {"type": AqueousPhase,
                             "equation_of_state": ENRTL,
                             "equation_of_state_options": {
-                                    "reference_state": Unsymmetric}
+                                    "reference_state": Unsymmetric},
+                            "diffus_phase_comp": rule_diffus_phase_comp
+                            "visc_d_phase":
+
                             },
                     },
         "state_definition": FTPx,
