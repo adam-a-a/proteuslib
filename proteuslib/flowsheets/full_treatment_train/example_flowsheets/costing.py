@@ -81,6 +81,7 @@ def build_costing(m, module=financials, **kwargs):
     # Pretreatment
     if hasattr(m.fs,'stoich_softening_mixer_unit'):
         m.fs.stoich_softening_mixer_unit.get_costing(module=module, section='pretreatment', mixer_type="lime_softening",cost_capacity=cost_capacity_flag)
+
         m.fs.lime_softening_unit_capex = Expression(expr=m.fs.stoich_softening_mixer_unit.costing.capital_cost/m.fs.annual_water_production *crf)
         m.fs.lime_softening_unit_opex = Expression(expr=m.fs.stoich_softening_mixer_unit.costing.operating_cost / m.fs.annual_water_production)
     else:
@@ -89,8 +90,8 @@ def build_costing(m, module=financials, **kwargs):
 
     # Post-treatment
     if hasattr(m.fs,'ideal_naocl_mixer_unit'):
-        # print('FOUND CHLORINATION UNIT')
         m.fs.ideal_naocl_mixer_unit.get_costing(module=module, section='post_treatment', mixer_type='naocl_mixer', cost_capacity=cost_capacity_flag)
+
         m.fs.chlorination_unit_capex = Expression(expr=m.fs.ideal_naocl_mixer_unit.costing.capital_cost/m.fs.annual_water_production *crf)
         m.fs.chlorination_unit_opex = Expression(expr=m.fs.ideal_naocl_mixer_unit.costing.operating_cost / m.fs.annual_water_production)
     else:
@@ -164,22 +165,28 @@ def display_costing(m):
 
     return cost_dict
 
-def display_cost_breakdown(m):
+def display_cost_breakdown(m, cost_type='levelized'):
     crf = m.fs.costing_param.factor_capital_annualization
 
+    capex_list = []
+    opex_list = []
     for b_unit in m.component_objects(Block, descend_into=True):
         if hasattr(b_unit, 'costing') and hasattr(b_unit.costing, 'capital_cost'):
+            if cost_type == 'total':
+                capex_out = value(b_unit.costing.capital_cost)
+                opex_out = value(b_unit.costing.operating_cost)
+            elif cost_type == 'levelized':
+                capex_out = value(b_unit.costing.capital_cost/m.fs.annual_water_production * crf)
+                opex_out = value(b_unit.costing.operating_cost/m.fs.annual_water_production)
 
 
-            print(b_unit.costing.capital_cost,"=",value(b_unit.costing.capital_cost),'\n',
-                  b_unit.costing.operating_cost,"=",value(b_unit.costing.operating_cost))
+            print(f'{cost_type} capital cost of {b_unit} = {capex_out} \n'
+                  f'{cost_type} operating cost of {b_unit} = {opex_out}',)
 
-            unit_capex = value(b_unit.costing.capital_cost/m.fs.annual_water_production * crf)
-            unit_opex = value(b_unit.costing.operating_cost/m.fs.annual_water_production)
-            print(b_unit.costing.capital_cost, "=", unit_capex, '\n',
-                  b_unit.costing.operating_cost,"=",unit_opex)
+            capex_list.append(capex_out)
+            opex_list.append(opex_out)
 
-
+    return capex_list, opex_list
 
 if __name__ == "__main__":
     m = ConcreteModel()
@@ -227,3 +234,5 @@ if __name__ == "__main__":
     solve_with_user_scaling(m)
 
     display_costing(m)
+
+    display_cost_breakdown(m, cost_type='levelized')

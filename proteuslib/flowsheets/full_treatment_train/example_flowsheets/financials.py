@@ -15,6 +15,7 @@ from pyomo.environ import (
 from idaes.core.util.exceptions import ConfigurationError
 
 
+
 def add_costing_param_block(self):
     self.costing_param = Block()
     b = self.costing_param
@@ -225,7 +226,7 @@ def Separator_costing(self, section=None, cost_capacity=False):
                                        * (b_m.outlet_state[0].flow_vol * 1000) ** self.n) * self.Fm
                  * self.cost_esc / (pyunits.m ** 3 / pyunits.s))
     elif not cost_capacity:
-        # assume linear cost per L/s based on average of cost capacity curve data
+        # assume linear cost per L/s based on median of cost capacity curve data
         self.separator_unit_capex = Param(initialize=361, mutable=True, units=pyunits.dimensionless,
                                       doc="Capex per daily plant capacity")
         self.eq_capital_cost = Constraint(expr=self.capital_cost == self.separator_unit_capex
