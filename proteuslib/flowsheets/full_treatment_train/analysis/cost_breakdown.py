@@ -29,8 +29,7 @@ def run_analysis(nx, RO_type):
     outputs['LCOW'] = m.fs.costing.LCOW
     outputs['Saturation Index'] = m.fs.desal_saturation.saturation_index
     outputs['Pump Pressure'] = m.fs.pump_RO.control_volume.properties_out[0].pressure
-    outputs = append_costing_outputs(m, outputs, ['RO', 'pump_RO', 'ERD'])
-
+    outputs, _, _ = costing.display_cost_breakdown(m, cost_type='levelized')
     output_filename = 'output/fs_single_stage/results_%sRO.csv' % (desal_kwargs['RO_type'])
 
     opt_function = fs_single_stage.optimize

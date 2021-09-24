@@ -170,6 +170,8 @@ def display_cost_breakdown(m, cost_type='levelized'):
 
     capex_list = []
     opex_list = []
+    outputs = {}
+
     for b_unit in m.component_objects(Block, descend_into=True):
         if hasattr(b_unit, 'costing') and hasattr(b_unit.costing, 'capital_cost'):
             if cost_type == 'total':
@@ -179,14 +181,16 @@ def display_cost_breakdown(m, cost_type='levelized'):
                 capex_out = value(b_unit.costing.capital_cost/m.fs.annual_water_production * crf)
                 opex_out = value(b_unit.costing.operating_cost/m.fs.annual_water_production)
 
-
-            print(f'{cost_type} capital cost of {b_unit} = {capex_out} \n'
-                  f'{cost_type} operating cost of {b_unit} = {opex_out}',)
+            unit_str = str(b_unit).split('.')[1]
+            print(f'{cost_type} capital cost of {unit_str} = {capex_out} \n'
+                  f'{cost_type} operating cost of {unit_str} = {opex_out}',)
 
             capex_list.append(capex_out)
             opex_list.append(opex_out)
 
-    return capex_list, opex_list
+            outputs[f'{cost_type}_capex_{unit_str}'] = capex_out
+            outputs[f'{cost_type}_opex_{unit_str}'] = opex_out
+    return outputs, capex_list, opex_list
 
 if __name__ == "__main__":
     m = ConcreteModel()
@@ -235,4 +239,4 @@ if __name__ == "__main__":
 
     display_costing(m)
 
-    display_cost_breakdown(m, cost_type='levelized')
+    outputs, _, _ = display_cost_breakdown(m, cost_type='levelized')
