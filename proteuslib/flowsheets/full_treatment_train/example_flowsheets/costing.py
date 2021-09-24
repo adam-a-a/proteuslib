@@ -164,6 +164,23 @@ def display_costing(m):
 
     return cost_dict
 
+def display_cost_breakdown(m):
+    crf = m.fs.costing_param.factor_capital_annualization
+
+    for b_unit in m.component_objects(Block, descend_into=True):
+        if hasattr(b_unit, 'costing') and hasattr(b_unit.costing, 'capital_cost'):
+
+
+            print(b_unit.costing.capital_cost,"=",value(b_unit.costing.capital_cost),'\n',
+                  b_unit.costing.operating_cost,"=",value(b_unit.costing.operating_cost))
+
+            unit_capex = value(b_unit.costing.capital_cost/m.fs.annual_water_production * crf)
+            unit_opex = value(b_unit.costing.operating_cost/m.fs.annual_water_production)
+            print(b_unit.costing.capital_cost, "=", unit_capex, '\n',
+                  b_unit.costing.operating_cost,"=",unit_opex)
+
+
+
 if __name__ == "__main__":
     m = ConcreteModel()
     m.fs = FlowsheetBlock(default={"dynamic": False})
