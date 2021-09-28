@@ -29,18 +29,20 @@ def run_analysis(nx, RO_type):
     outputs['LCOW'] = m.fs.costing.LCOW
     outputs['Saturation Index'] = m.fs.desal_saturation.saturation_index
     outputs['Pump Pressure'] = m.fs.pump_RO.control_volume.properties_out[0].pressure
-    outputs, _, _ = costing.display_cost_breakdown(m, cost_type='levelized')
     output_filename = 'output/fs_single_stage/results_%sRO.csv' % (desal_kwargs['RO_type'])
+    myoutputs, _, _ = costing.display_cost_breakdown(m, cost_type='levelized')
+    outputs.update(myoutputs)
 
     opt_function = fs_single_stage.optimize
 
     global_results = parameter_sweep(m, sweep_params, outputs, output_filename,
                                      optimize_function=opt_function,
                                      debugging_data_dir=os.path.split(output_filename)[0]+'/local')
-    return global_results, sweep_params
+
+    return global_results, sweep_params, outputs
 
 if __name__ == "__main__":
     nx= 4
     RO_type= '0D'
-    global_results, sweep_params = run_analysis(nx, RO_type)
+    global_results, sweep_params, outputs = run_analysis(nx, RO_type)
     print(global_results)

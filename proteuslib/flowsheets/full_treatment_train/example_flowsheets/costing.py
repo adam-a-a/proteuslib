@@ -175,15 +175,15 @@ def display_cost_breakdown(m, cost_type='levelized'):
     for b_unit in m.component_objects(Block, descend_into=True):
         if hasattr(b_unit, 'costing') and hasattr(b_unit.costing, 'capital_cost'):
             if cost_type == 'total':
-                capex_out = value(b_unit.costing.capital_cost)
-                opex_out = value(b_unit.costing.operating_cost)
+                capex_out = b_unit.costing.capital_cost
+                opex_out = b_unit.costing.operating_cost
             elif cost_type == 'levelized':
-                capex_out = value(b_unit.costing.capital_cost/m.fs.annual_water_production * crf)
-                opex_out = value(b_unit.costing.operating_cost/m.fs.annual_water_production)
+                capex_out = b_unit.costing.capital_cost/m.fs.annual_water_production * crf
+                opex_out = b_unit.costing.operating_cost/m.fs.annual_water_production
 
             unit_str = str(b_unit).split('.')[1]
-            print(f'{cost_type} capital cost of {unit_str} = {capex_out} \n'
-                  f'{cost_type} operating cost of {unit_str} = {opex_out}',)
+            print(f'{cost_type} capital cost of {unit_str} = {value(capex_out)} \n'
+                  f'{cost_type} operating cost of {unit_str} = {value(opex_out)}',)
 
             capex_list.append(capex_out)
             opex_list.append(opex_out)
