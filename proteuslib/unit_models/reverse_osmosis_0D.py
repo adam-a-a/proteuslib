@@ -27,6 +27,7 @@ from pyomo.environ import (Var,
                            exp,
                            value)
 from pyomo.common.config import ConfigBlock, ConfigValue, In
+from pyomo.common.collections import ComponentSet
 # Import IDAES cores
 from idaes.core import (ControlVolume0DBlock,
                         declare_process_block_class,
@@ -287,6 +288,8 @@ class ReverseOsmosisData(UnitModelBlockData):
         # Check configuration errors
         self._process_config()
 
+        # For permeate-specific scaling in calculate_scaling_factors
+        self._permeate_scaled_properties = ComponentSet()
 
         # Add unit parameters
         self.A_comp = Var(
@@ -1148,6 +1151,7 @@ class ReverseOsmosisData(UnitModelBlockData):
         self.costing = Block()
         module.ReverseOsmosis_costing(self.costing, **kwargs)
 
+<<<<<<< HEAD
     def calculate_scaling_factors(self):
         super().calculate_scaling_factors()
 
