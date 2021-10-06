@@ -188,21 +188,21 @@ water_thermo_config = {
         #           },
         # "SO4_2-": {"type": Solute,
         #           },
-        "Na+": {"type": Solute,
-                "dens_mol_liq_comp": dummy_method,
-                "parameter_data": {
-                    "mw": 58.44e-3 * pyunits.kg / pyunits.mol}
-                # "enth_mol_liq_comp": dummy_method
-                },
-        "Cl-": {"type": Solute,
-                "dens_mol_liq_comp": dummy_method,
-                "parameter_data": {
-                    "mw": 58.44e-3 * pyunits.kg / pyunits.mol}
+        # "Na+": {"type": Solute,
+        #         "dens_mol_liq_comp": dummy_method,
+        #         "parameter_data": {
+        #             "mw": 58.44e-3 * pyunits.kg / pyunits.mol}
+        #         # "enth_mol_liq_comp": dummy_method
+        #         },
+        # "Cl-": {"type": Solute,
+        #         "dens_mol_liq_comp": dummy_method,
+        #         "parameter_data": {
+        #             "mw": 58.44e-3 * pyunits.kg / pyunits.mol}
                 # "enth_mol_liq_comp": dummy_method
                },
         # "Mg_2+": {"type": Solute,
         #         }
-                },  # End Component list
+        #         },  # End Component list
         "phases":  {'Liq': {"type": AqueousPhase,
                             "equation_of_state": ENRTL,
                             "equation_of_state_options": {
@@ -258,6 +258,7 @@ tds_mol_flow = feed_flow_mass * feed_mass_frac_NaCl / mw_tds
 h2o_mol_flow = feed_flow_mass * feed_mass_frac_H2O / mw_h2o
 m.fs.unit.inlet.flow_mol_comp[0, 'TDS'].fix(tds_mol_flow)
 
+m.fs.unit.feed_side.properties_in[0].flow_mol_phase['Liq'].fix(tds_mol_flow+h2o_mol_flow)
 m.fs.unit.inlet.flow_mol_comp[0, 'TDS'].fix(tds_mol_flow)
 m.fs.unit.inlet.flow_mol_comp[0, 'H2O'].fix(h2o_mol_flow)
 m.fs.unit.inlet.pressure[0].fix(feed_pressure)
