@@ -97,13 +97,19 @@ def rule_diffus_phase_comp(b, p, j):  # diffusivity, eq 6 in Bartholomew
     #     initialize=diffus_param_dict,
     #     units=pyunits.m ** 2 / pyunits.s,
     #     doc='Dynamic viscosity parameters')
-    mw = b.params.get_component(j).mw
-    mass_frac_phase_comp = b.conc_mol_phase_comp['Liq', j] * mw / b.dens_mass_phase['Liq']
-    return b.diffus_phase_comp[p, j] == (1.53e-7* mass_frac_phase_comp ** 4
-                                         + (-1.22e-7) * mass_frac_phase_comp ** 3
-                                         + 3.01e-8 * mass_frac_phase_comp ** 2
-                                         + (-1.22e-7) * mass_frac_phase_comp
-                                         + 1.53e-7)
+    # comp = b.params.get_component(j)
+    # if comp.is_solute():
+    #     mw =comp.mw
+    #     print(mw)
+    #     mass_frac_phase_comp = b.conc_mol_phase_comp['Liq', j] * mw / b.dens_mass_phase['Liq']
+    #     print(value(mass_frac_phase_comp))
+    #
+    #     return b.diffus_phase_comp[p, j] == (1.53e-7* mass_frac_phase_comp ** 4
+    #                                          + (-1.22e-7) * mass_frac_phase_comp ** 3
+    #                                          + 3.01e-8 * mass_frac_phase_comp ** 2
+    #                                          + (-1.22e-7) * mass_frac_phase_comp
+    #                                          + 1.53e-7)
+    return 1e-6
 
 
 def rule_visc_d_phase(b, p):  # dynamic viscosity, eq 5 in Bartholomew
@@ -114,12 +120,13 @@ def rule_visc_d_phase(b, p):  # dynamic viscosity, eq 5 in Bartholomew
     #     initialize=visc_d_param_dict,
     #     units=pyunits.Pa * pyunits.s,
     #     doc='Dynamic viscosity parameters')
-    for j in b.params.solute_set:
-        mw = b.params.get_component(j).mw
-        mass_frac_phase_comp = b.conc_mol_phase_comp['Liq', j] * mw / b.dens_mass_phase['Liq']
-        return (b.visc_d_phase['Liq'] ==
-                2.15E-3 * mass_frac_phase_comp
-                + 9.80E-4)
+    # for j in b.params.solute_set:
+    #     mw = b.params.get_component(j).mw
+    #     mass_frac_phase_comp = b.conc_mol_phase_comp['Liq', j] * mw / b.dens_mass_phase['Liq']
+    #     return (b.visc_d_phase['Liq'] ==
+    #             2.15E-3 * mass_frac_phase_comp
+    #             + 9.80E-4)
+    return 1e-9
 
 # Configuration dictionary
 water_thermo_config = {
@@ -173,7 +180,7 @@ water_thermo_config = {
                  # "enth_mol_liq_comp": dummy_method,
                  "dens_mol_liq_comp": dummy_method,
                  "parameter_data": {
-                                    "mw": 58.44e-3 * pyunits.kg/ pyunits.mol}
+                                    "mw": 58.44e-3 * pyunits.kg / pyunits.mol}
                  },
         # "CaSO4": {"type": Apparent,
         #          "dissociation_species": {"Ca_2+": 1, "SO4_2-": 1}},
@@ -181,16 +188,16 @@ water_thermo_config = {
         #           },
         # "SO4_2-": {"type": Solute,
         #           },
-        "Na+": {"type": Cation,
-                "charge": +1,
+        "Na+": {"type": Solute,
+                "dens_mol_liq_comp": dummy_method,
                 "parameter_data": {
-                    "mw": 23e-3 * pyunits.kg / pyunits.mol}
+                    "mw": 58.44e-3 * pyunits.kg / pyunits.mol}
                 # "enth_mol_liq_comp": dummy_method
                 },
-        "Cl-": {"type": Anion,
-                "charge": -1,
+        "Cl-": {"type": Solute,
+                "dens_mol_liq_comp": dummy_method,
                 "parameter_data": {
-                    "mw": 35e-3 * pyunits.kg / pyunits.mol}
+                    "mw": 58.44e-3 * pyunits.kg / pyunits.mol}
                 # "enth_mol_liq_comp": dummy_method
                },
         # "Mg_2+": {"type": Solute,
@@ -232,6 +239,8 @@ m.fs.unit = ReverseOsmosis0D(default={"property_package": m.fs.properties,
 
 mw_tds= 58.44e-3
 mw_h2o= 18e-3
+mw_na = 23
+mw_cl = 35.45
 feed_flow_mass = 1
 feed_mass_frac_NaCl = 0.035
 feed_pressure = 60e5
@@ -247,6 +256,8 @@ feed_mass_frac_H2O = 1 - feed_mass_frac_NaCl
 
 tds_mol_flow = feed_flow_mass * feed_mass_frac_NaCl / mw_tds
 h2o_mol_flow = feed_flow_mass * feed_mass_frac_H2O / mw_h2o
+m.fs.unit.inlet.flow_mol_comp[0, 'TDS'].fix(tds_mol_flow)
+
 m.fs.unit.inlet.flow_mol_comp[0, 'TDS'].fix(tds_mol_flow)
 m.fs.unit.inlet.flow_mol_comp[0, 'H2O'].fix(h2o_mol_flow)
 m.fs.unit.inlet.pressure[0].fix(feed_pressure)
@@ -268,3 +279,7 @@ m.fs.properties.set_default_scaling('conc_mol_phase_comp', 1e2, index=('Liq', 'N
 iscale.calculate_scaling_factors(m)
 print(degrees_of_freedom(m))
 # assert degrees_of_freedom(m) == 0
+solver = get_solver()
+# solver.options['bound_push'] = 1e-7
+# solver.options['bound_relax_factor'] = 1e-7
+results = solver.solve(m, tee=True, symbolic_solver_labels=True)
