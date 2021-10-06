@@ -1151,7 +1151,6 @@ class ReverseOsmosisData(UnitModelBlockData):
         self.costing = Block()
         module.ReverseOsmosis_costing(self.costing, **kwargs)
 
-<<<<<<< HEAD
     def calculate_scaling_factors(self):
         super().calculate_scaling_factors()
 
