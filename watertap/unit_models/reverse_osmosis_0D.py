@@ -1243,13 +1243,10 @@ class ReverseOsmosisData(UnitModelBlockData):
                 if sb[t].is_property_constructed('pressure_osm_phase'):
                     rescale_variable(sb[t].pressure_osm_phase['Liq'])
 
-        # TODO: require users to set scaling factor for area or calculate it based on mass transfer and flux
-        iscale.set_scaling_factor(self.area, 1e-1)
-
         # setting scaling factors for variables
         # these variables should have user input, if not there will be a warning
         if iscale.get_scaling_factor(self.area) is None:
-            sf = iscale.get_scaling_factor(self.area, default=1, warning=True)
+            sf = iscale.get_scaling_factor(self.area, default=1e-1, warning=True)
             iscale.set_scaling_factor(self.area, sf)
 
         # these variables do not typically require user input,
@@ -1370,7 +1367,6 @@ class ReverseOsmosisData(UnitModelBlockData):
                                                       default=value(1/self.feed_side.properties_in[t].conc_mol_phase_comp[
                                                           p, j]))
                           * iscale.get_scaling_factor(mw, default=value(1/mw)))
-                    print(sf)
                     iscale.set_scaling_factor(v, sf)
 
         for (t, p, j), v in self.feed_side.mass_transfer_term.items():
