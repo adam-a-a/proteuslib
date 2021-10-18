@@ -35,12 +35,6 @@ def test_property_seawater_ions():
     m.fs.stream = m.fs.properties.build_state_block([0], default={'defined_state': True})
 
     # specify
-    # feed_flow_mass = 1
-    # feed_mass_frac = {'Na': 11122e-6,
-    #                   'Ca': 382e-6,
-    #                   'Mg': 1394e-6,
-    #                   'SO4': 2136e-6,
-    #                   'Cl': 20300e-6}
     m.fs.stream[0].flow_mol_phase_comp['Liq', 'Na_+'].fix(0.008845)
     m.fs.stream[0].flow_mol_phase_comp['Liq', 'Ca_2+'].fix(0.000174)
     m.fs.stream[0].flow_mol_phase_comp['Liq', 'Mg_2+'].fix(0.001049)
@@ -49,8 +43,6 @@ def test_property_seawater_ions():
     m.fs.stream[0].flow_mol_phase_comp['Liq', 'H2O'].fix(0.979046)
     m.fs.stream[0].temperature.fix(273.15 + 25)
     m.fs.stream[0].pressure.fix(101325)
-
-    # m.fs.stream[0].mass_frac_comp # TODO: mass_frac_comp and mass_frac_phase_comp need to be added to generic property model
 
     # # scaling
     iscale.calculate_scaling_factors(m.fs)
