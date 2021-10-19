@@ -156,27 +156,27 @@ configuration = {
         "Na_+": {"type": Cation,
                  "charge": +1,
                  "parameter_data":{
-                     "mw": 23e-3
+                     "mw": (23e-3,  pyunits.kg / pyunits.mol)
                  }},
         "Ca_2+": {"type": Cation,
                   "charge": +2,
                   "parameter_data": {
-                      "mw": 40e-3
+                      "mw": (40e-3,  pyunits.kg / pyunits.mol)
                   }},
         "Mg_2+": {"type": Cation,
                   "charge": +2,
                   "parameter_data":{
-                      "mw": 24.3e-3
+                      "mw": (24.3e-3,  pyunits.kg / pyunits.mol)
                   }},
         "Cl_-": {"type": Anion,
                  "charge": -1,
                  "parameter_data": {
-                     "mw": 35.45e-3
+                     "mw": (35.45e-3,  pyunits.kg / pyunits.mol)
                  }},
         "SO4_2-": {"type": Anion,
                    "charge": -2,
                    "parameter_data": {
-                       "mw": 96.06e-3
+                       "mw": (96.06e-3,  pyunits.kg / pyunits.mol)
                    }}},
     "phases": {
         "Liq": {"type": AqueousPhase,

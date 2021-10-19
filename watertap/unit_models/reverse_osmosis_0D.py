@@ -638,8 +638,8 @@ class ReverseOsmosisData(UnitModelBlockData):
             comp = self.config.property_package.get_component(j)
             if comp.is_solvent():
                 return (b.flux_mass_io_phase_comp[t, x, p, j] == b.A_comp[t, j] * b.dens_solvent
-                        * ((prop_feed.pressure - prop_perm.pressure)
-                           - (prop_feed_inter.pressure_osm_phase['Liq'] - prop_perm.pressure_osm_phase['Liq'])))
+                        * (prop_feed.pressure - prop_perm.pressure
+                             - (prop_feed_inter.pressure_osm_phase['Liq'] - prop_perm.pressure_osm_phase['Liq'])))
             elif comp.is_solute():
                 mw = self.config.property_package.get_component(j).mw
                 return (b.flux_mass_io_phase_comp[t, x, p, j] == b.B_comp[t, j]
@@ -751,7 +751,7 @@ class ReverseOsmosisData(UnitModelBlockData):
                 elif x == 'out':
                     prop_io = b.feed_side.properties_out[t]
                 return (b.Kf_io[t, x, j] * b.dh ==
-                        prop_io.diffus_phase_comp['Liq', j]
+                        prop_io.diffus_phase_comp['Liq', j] #TODO: need to add diffus_phase_comp method to config
                         * b.N_Sh_io_comp[t, x, j])
 
             @self.Constraint(self.flowsheet().config.time,
@@ -971,6 +971,11 @@ class ReverseOsmosisData(UnitModelBlockData):
             optarg = {'bound_push': 1e-8}
         opt = get_solver(solver, optarg)
 
+        for k in ('ion_set', 'solute_set'):
+            if hasattr(blk.config.property_package, k):
+                solute_set = getattr(blk.config.property_package, k)
+                break
+
         # assumptions
         if initialize_guess is None:
             initialize_guess = {}
@@ -1031,14 +1036,14 @@ class ReverseOsmosisData(UnitModelBlockData):
             for j in blk.config.property_package.solvent_set:
                 state_args_retentate['flow_mass_phase_comp'][('Liq', j)] *= (1 - initialize_guess['solvent_recovery'])
                 state_args_permeate['flow_mass_phase_comp'][('Liq', j)] *= initialize_guess['solvent_recovery']
-            for j in blk.config.property_package.solute_set:
+            for j in solute_set:
                 state_args_retentate['flow_mass_phase_comp'][('Liq', j)] *= (1 - initialize_guess['solute_recovery'])
                 state_args_permeate['flow_mass_phase_comp'][('Liq', j)] *= initialize_guess['solute_recovery']
 
             state_args_interface_in = deepcopy(state_args)
             state_args_interface_out = deepcopy(state_args_retentate)
 
-            for j in blk.config.property_package.solute_set:
+            for j in solute_set:
                 state_args_interface_in['flow_mass_phase_comp'][('Liq', j)] *= initialize_guess['cp_modulus']
                 state_args_interface_out['flow_mass_phase_comp'][('Liq', j)] *= initialize_guess['cp_modulus']
         elif 'flow_mol_phase_comp' in state_args.keys():
@@ -1050,14 +1055,14 @@ class ReverseOsmosisData(UnitModelBlockData):
             for j in blk.config.property_package.solvent_set:
                 state_args_retentate['flow_mol_phase_comp'][('Liq', j)] *= (1 - initialize_guess['solvent_recovery'])
                 state_args_permeate['flow_mol_phase_comp'][('Liq', j)] *= initialize_guess['solvent_recovery']
-            for j in blk.config.property_package.solute_set:
+            for j in solute_set:
                 state_args_retentate['flow_mol_phase_comp'][('Liq', j)] *= (1 - initialize_guess['solute_recovery'])
                 state_args_permeate['flow_mol_phase_comp'][('Liq', j)] *= initialize_guess['solute_recovery']
 
             state_args_interface_in = deepcopy(state_args)
             state_args_interface_out = deepcopy(state_args_retentate)
 
-            for j in blk.config.property_package.solute_set:
+            for j in solute_set:
                 state_args_interface_in['flow_mol_phase_comp'][('Liq', j)] *= initialize_guess['cp_modulus']
                 state_args_interface_out['flow_mol_phase_comp'][('Liq', j)] *= initialize_guess['cp_modulus']
 
@@ -1095,15 +1100,15 @@ class ReverseOsmosisData(UnitModelBlockData):
 
         # ---------------------------------------------------------------------
         # Solve unit
-        with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-            res = opt.solve(blk, tee=slc.tee)
-        check_solve(res, checkpoint='Initialization Step 3', logger=init_log, fail_flag=fail_on_warning)
+        # with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
+        #     res = opt.solve(blk, tee=slc.tee)
+        # check_solve(res, checkpoint='Initialization Step 3', logger=init_log, fail_flag=fail_on_warning)
         # ---------------------------------------------------------------------
         # Release Inlet state
         blk.feed_side.release_state(flags, outlvl)
-        init_log.info(
-            "Initialization Complete: {}".format(idaeslog.condition(res))
-        )
+        # init_log.info(
+        #     "Initialization Complete: {}".format(idaeslog.condition(res))
+        # )
 
     def _get_performance_contents(self, time_point=0):
         for k in ('ion_set', 'solute_set'):
