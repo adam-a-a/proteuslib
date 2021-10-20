@@ -969,6 +969,7 @@ class ReverseOsmosisData(UnitModelBlockData):
         # Set solver and options
         if optarg is None:
             optarg = {'bound_push': 1e-8}
+
         opt = get_solver(solver, optarg)
 
         for k in ('ion_set', 'solute_set'):
@@ -1098,17 +1099,21 @@ class ReverseOsmosisData(UnitModelBlockData):
             state_args=state_args_permeate,)
         init_log.info_high("Initialization Step 2 Complete.")
 
+        blk.area.set_value(50)
+        blk.permeate_side.properties_out[0].pressure_osm_phase['Liq'].set_value(25e5)
+        blk.report()
+        # blk.over_pressure_ratio[0] = 1.2
         # ---------------------------------------------------------------------
         # Solve unit
-        # with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-        #     res = opt.solve(blk, tee=slc.tee)
-        # check_solve(res, checkpoint='Initialization Step 3', logger=init_log, fail_flag=fail_on_warning)
+        with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
+            res = opt.solve(blk, tee=slc.tee)
+        check_solve(res, checkpoint='Initialization Step 3', logger=init_log, fail_flag=fail_on_warning)
         # ---------------------------------------------------------------------
         # Release Inlet state
         blk.feed_side.release_state(flags, outlvl)
-        # init_log.info(
-        #     "Initialization Complete: {}".format(idaeslog.condition(res))
-        # )
+        init_log.info(
+            "Initialization Complete: {}".format(idaeslog.condition(res))
+        )
 
     def _get_performance_contents(self, time_point=0):
         for k in ('ion_set', 'solute_set'):
