@@ -969,7 +969,6 @@ class ReverseOsmosisData(UnitModelBlockData):
         # Set solver and options
         if optarg is None:
             optarg = {'bound_push': 1e-8}
-
         opt = get_solver(solver, optarg)
 
         for k in ('ion_set', 'solute_set'):
@@ -1105,8 +1104,9 @@ class ReverseOsmosisData(UnitModelBlockData):
         # blk.over_pressure_ratio[0] = 1.2
         # ---------------------------------------------------------------------
         # Solve unit
-        with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-            res = opt.solve(blk, tee=slc.tee)
+        # with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
+        opt.options = {'halt_on_ampl_error': 'yes'}
+        res = opt.solve(blk, tee=True, symbolic_solver_labels=True)#slc.tee)
         check_solve(res, checkpoint='Initialization Step 3', logger=init_log, fail_flag=fail_on_warning)
         # ---------------------------------------------------------------------
         # Release Inlet state
@@ -1404,6 +1404,11 @@ class ReverseOsmosisData(UnitModelBlockData):
         # for ind, c in self.eq_connect_enthalpy_transfer.items():
         #     sf = iscale.get_scaling_factor(self.feed_side.enthalpy_transfer[ind])
         #     iscale.constraint_scaling_transform(c, sf)
+# =======>>>>>>>>>>>>>>>>>>>
+#         for ind, c in self.eq_connect_enthalpy_transfer.items():
+#             sf = iscale.get_scaling_factor(self.feed_side.enthalpy_transfer[ind])
+#             iscale.constraint_scaling_transform(c, sf*10.)
+# >>>>>>> main
 
         for t, c in self.eq_permeate_isothermal.items():
             sf = iscale.get_scaling_factor(self.feed_side.properties_in[t].temperature)
@@ -1416,7 +1421,6 @@ class ReverseOsmosisData(UnitModelBlockData):
                 prop_io = self.permeate_side.properties_out[t]
             sf = iscale.get_scaling_factor(prop_io.mass_frac_phase_comp['Liq', j], default=value(1/prop_io.mass_frac_phase_comp['Liq', j]))
             iscale.constraint_scaling_transform(c, sf*100.)
-
 
         for (t, x), c in self.permeate_side.eq_temperature_permeate_io.items():
             if x == 'in':
