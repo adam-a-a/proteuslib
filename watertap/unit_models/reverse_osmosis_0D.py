@@ -359,7 +359,7 @@ class ReverseOsmosisData(UnitModelBlockData):
         def recovery_mass_phase_comp_bounds(b, t, p, j):
             ub = 1 - 1e-6
             if j in solvent_set:
-                lb = 1e-2
+                lb = 5e-4
             elif j in solute_set:
                 lb = 1e-5
             return lb, ub
@@ -983,8 +983,10 @@ class ReverseOsmosisData(UnitModelBlockData):
             initialize_guess['deltaP'] = -1e4
         if 'solvent_recovery' not in initialize_guess:
             initialize_guess['solvent_recovery'] = 0.5
+            blk.recovery_mass_phase_comp[0, "Liq", "H2O"].set_value(initialize_guess['solvent_recovery'])
         if 'solute_recovery' not in initialize_guess:
-            initialize_guess['solute_recovery'] = 0.01
+            initialize_guess['solute_recovery'] = 0.001
+            blk.recovery_mass_phase_comp[0, "Liq", :].set_value(initialize_guess['solute_recovery'])
         if 'cp_modulus' not in initialize_guess:
             initialize_guess['cp_modulus'] = 1.1
 
@@ -1098,22 +1100,19 @@ class ReverseOsmosisData(UnitModelBlockData):
             state_args=state_args_permeate,)
         init_log.info_high("Initialization Step 2 Complete.")
 
-        blk.area.set_value(50)
-        blk.permeate_side.properties_out[0].pressure_osm_phase['Liq'].set_value(25e5)
-        blk.report()
-        # blk.over_pressure_ratio[0] = 1.2
-        # ---------------------------------------------------------------------
-        # Solve unit
+        # blk.report()
+        # # ---------------------------------------------------------------------
+        # # Solve unit
         # with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-        opt.options = {'halt_on_ampl_error': 'yes'}
-        res = opt.solve(blk, tee=True, symbolic_solver_labels=True)#slc.tee)
-        check_solve(res, checkpoint='Initialization Step 3', logger=init_log, fail_flag=fail_on_warning)
-        # ---------------------------------------------------------------------
-        # Release Inlet state
+        # opt.options = {'halt_on_ampl_error': 'yes'}
+        # res = opt.solve(blk, tee=True, symbolic_solver_labels=True)#slc.tee)
+        # check_solve(res, checkpoint='Initialization Step 3', logger=init_log, fail_flag=fail_on_warning)
+        # # ---------------------------------------------------------------------
+        # # Release Inlet state
         blk.feed_side.release_state(flags, outlvl)
-        init_log.info(
-            "Initialization Complete: {}".format(idaeslog.condition(res))
-        )
+        # init_log.info(
+        #     "Initialization Complete: {}".format(idaeslog.condition(res))
+        # )
 
     def _get_performance_contents(self, time_point=0):
         for k in ('ion_set', 'solute_set'):
