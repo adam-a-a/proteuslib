@@ -383,7 +383,13 @@ def solve(m, solver=None, tee=False, raise_on_failure=False):
 
 
 def optimize_set_up(m, water_recovery=None, A_case=None, B_case=None, AB_tradeoff=None, A_fixed=None):
-
+    '''
+    B_case: "single optimum" or anything else
+    A_case: "fix" or "optimize"
+    AB_tradeoff: "inequality constraint"
+                 "equality constraint"
+                 anything else for no constraint applied
+    '''
     for idx, pump in m.fs.PrimaryPumps.items():
         pump.control_volume.properties_out[0].pressure.unfix()
         pump.control_volume.properties_out[0].pressure.setlb(10e5)
@@ -559,9 +565,9 @@ if __name__ == "__main__":
     #
     # else:
     #     m = main(int(sys.argv[1]), float(sys.argv[2]))
-    m = main(number_of_stages=3,
-             water_recovery=0.75,
-             Cin=70,
+    m = main(number_of_stages=2,
+             water_recovery=0.5,
+             Cin=125,
              A_case="fix A",
              B_case="single optimum",
              AB_tradeoff="inequality constraint",
