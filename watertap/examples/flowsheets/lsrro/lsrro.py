@@ -565,10 +565,10 @@ if __name__ == "__main__":
     #
     # else:
     #     m = main(int(sys.argv[1]), float(sys.argv[2]))
-    m = main(number_of_stages=2,
+    m = main(number_of_stages=4,
              water_recovery=0.5,
              Cin=125,
              A_case="fix A",
-             B_case="single optimum",
+             B_case=None,
              AB_tradeoff="inequality constraint",
-             A_fixed=1.5/3.6e11)
+             A_fixed=5/3.6e11)
