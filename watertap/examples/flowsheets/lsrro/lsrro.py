@@ -283,7 +283,7 @@ def _lsrro_mixer_guess_initializer( mixer, solvent_multiplier, solute_multiplier
 
 
 def do_initialization_pass(m, optarg, guess_mixers):
-
+    print('--------------------START INITIALIZATION PASS--------------------')
     # start with the feed
     m.fs.feed.initialize(optarg=optarg)
 
@@ -324,6 +324,7 @@ def do_initialization_pass(m, optarg, guess_mixers):
 
 
 def do_backwards_initialization_pass(m, optarg):
+    print('--------------------START BACKWARDS INITIALIZATION PASS--------------------')
 
     first_stage = m.fs.StageSet.first()
     for stage in reversed(m.fs.NonFinal_StageSet):
@@ -425,6 +426,7 @@ def optimize_set_up(m, water_recovery=None, A_case=None, B_case=None, AB_tradeof
         stage.N_Re_io[0, 'in'].unfix()
         #TODO: Pressure drop results are unreasonably high; set upper bound on deltaP or velocity?
         stage.deltaP.setlb(-8e5)
+        stage.length.setub(8)
         stage.spacer_porosity.unfix()
         stage.spacer_porosity.setlb(0.75)
         stage.spacer_porosity.setub(0.9)
@@ -565,10 +567,11 @@ if __name__ == "__main__":
     #
     # else:
     #     m = main(int(sys.argv[1]), float(sys.argv[2]))
-    m = main(number_of_stages=4,
-             water_recovery=0.5,
-             Cin=125,
-             A_case="fix A",
-             B_case=None,
-             AB_tradeoff="inequality constraint",
-             A_fixed=5/3.6e11)
+    m = main(number_of_stages=5,
+             water_recovery=0.75,
+             Cin=70,
+             A_case="optimize",
+             B_case="optimize",
+             AB_tradeoff="no constraint",
+             # A_fixed=1.5/3.6e11
+             )
