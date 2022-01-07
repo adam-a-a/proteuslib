@@ -37,6 +37,7 @@ import watertap.property_models.NaCl_prop_pack as props
 
 
 def main(number_of_stages, water_recovery=None, Cin=None, A_case=None,B_case=None,AB_tradeoff=None, A_fixed=None):
+    '''AB_tradeoff: None (or any name)'''
     m = build(number_of_stages)
     set_operating_conditions(m, Cin)
     initialize(m)
@@ -385,11 +386,12 @@ def solve(m, solver=None, tee=False, raise_on_failure=False):
 
 def optimize_set_up(m, water_recovery=None, A_case=None, B_case=None, AB_tradeoff=None, A_fixed=None):
     '''
-    B_case: "single optimum" or anything else
-    A_case: "fix" or "optimize"
-    AB_tradeoff: "inequality constraint"
-                 "equality constraint"
-                 anything else for no constraint applied
+    B_case: "single optimum" or anything else to optimize B value at every LSR stage
+    A_case: "fix" or "optimize" A at every LSR stage
+    AB_tradeoff: "inequality constraint" - B >= function of A
+                 "equality constraint" - B = function of A
+                 anything else for no constraint applied - no constraint relating B value to A value
+    A_fixed: if A_case="fix", then provide a value to fix A with
     '''
     for idx, pump in m.fs.PrimaryPumps.items():
         pump.control_volume.properties_out[0].pressure.unfix()
@@ -567,7 +569,7 @@ if __name__ == "__main__":
     #
     # else:
     #     m = main(int(sys.argv[1]), float(sys.argv[2]))
-    m = main(number_of_stages=5,
+    m = main(number_of_stages=3,
              water_recovery=0.75,
              Cin=70,
              A_case="optimize",
