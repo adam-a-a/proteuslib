@@ -37,7 +37,6 @@ import watertap.property_models.NaCl_prop_pack as props
 
 
 def main(number_of_stages, water_recovery=None, Cin=None, A_case=None,B_case=None,AB_tradeoff=None, A_fixed=None):
-    '''AB_tradeoff: None (or any name)'''
     m = build(number_of_stages)
     set_operating_conditions(m, Cin)
     initialize(m)
