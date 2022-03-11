@@ -165,7 +165,7 @@ def build(number_of_stages=2, nacl_solubility_limit=True, has_CP =True, has_Pdro
     m.fs.objective = Objective(expr=m.fs.costing.LCOW)
 
     # Expressions for parameter sweep ------------------------------------------------------------------------------
-    m.fs.total_membrane_area = sum(m.fs.ROUnits[a].area for a in range(1, m.fs.NumberOfStages + 1))
+    m.fs.total_membrane_area = sum(ro.area for ro in m.fs.ROUnits.values())
     m.fs.product.properties[0].mass_frac_phase_comp   # Final permeate concentration as mass fraction
     m.fs.feed.properties[0].conc_mass_phase_comp      # Touch feed concentration as mass concentration
     m.fs.disposal.properties[0].conc_mass_phase_comp  # Touch final brine concentration as mass concentration
