@@ -1,0 +1,53 @@
+default:  # TODO: should have removal rates for (e.g.) sulfate, nitrate, arsenic, etc.
+  recovery_frac_mass_H2O:
+    value: 0.8
+    units: dimensionless
+  default_removal_frac_mass_solute:
+    value: 0
+    units: dimensionless
+    reference: 'EPA model: https://www.epa.gov/sdwa/drinking-water-treatment-technology-unit-cost-models'
+  removal_frac_mass_solute:
+    tds:
+      value: 0.9
+      units: dimensionless
+      constituent_longform: Total Dissolved Solids (TDS)
+    calcium:
+      value: 0 #reactive removal handled below
+      units: dimensionless
+      consituent_longform: Calcium
+    sodium:
+      value: 0 #reactive removal handled below
+      units: dimensionless
+      constituent_longform: Sodium
+  NaCl_dose:
+    # Using anion exchange dose as default
+    value: 0.0061
+    units: kg/m^3
+  resin_replacement:
+    # Using anion exchange replacement rate as default
+    value: 1.36231e-3
+    units: kg/m^3
+  capital_cost:
+    # Using cost parameters for anion exchange as default
+    cost_factor: None
+    capital_a_parameter:
+      value: 8.61434
+      units: dimensionless
+    capital_b_parameter:
+      value: 0.821700
+      units: dimensionless
+    capital_c_parameter:
+      value: 5.44709E-06
+      units: dimensionless
+    capital_d_parameter:
+      value: 6.17757E-05
+      units: dimensionless
+  reactions:
+    exchange_Ca_Na:
+      key_reactant: calcium
+      conversion: 0.5
+      stoichiometry:
+        calcium:
+          conversion_ratio: -1
+        sodium:
+          conversion_ratio: 2
