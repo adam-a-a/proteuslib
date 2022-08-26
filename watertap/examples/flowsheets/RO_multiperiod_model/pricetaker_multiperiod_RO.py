@@ -69,7 +69,7 @@ def _get_lmp(time_steps, data_path):
     lmp_data = np.genfromtxt(data_path, delimiter=",")
 
     # index only the desired number of timesteps
-    return lmp_data[:time_steps]
+    return lmp_data[:time_steps] * 3
 
 
 def build_flowsheet(n_steps):
@@ -79,7 +79,7 @@ def build_flowsheet(n_steps):
     return mp_swro
 
 
-def set_objective(mp_swro, lmp, carbontax=3.5):
+def set_objective(mp_swro, lmp, carbontax=0):
     # Retrieve pyomo model and active process blocks (i.e. time blocks)
     m = mp_swro.pyomo_model
     t_blocks = mp_swro.get_active_process_blocks()
@@ -105,6 +105,7 @@ def set_objective(mp_swro, lmp, carbontax=3.5):
 
         # set the electricity_price in each flowsheet
         blk_swro.fs.costing.electricity_cost.fix(blk.lmp_signal)
+        blk_swro.fs.costing.utilization_factor.fix(1)
 
         # combine/place flowsheet level cost metrics on each time block
         blk.weighted_LCOW = Expression(
@@ -209,28 +210,37 @@ def visualize_results(m, t_blocks, data):
     ax[0, 0].set_xlabel("Time [hr]")
     ax[0, 0].set_ylabel("Electricity price [$/kWh]")
 
-    ax[1, 0].plot(time_step, pump1_flow * 3600, label="P1")
-    ax[1, 0].plot(time_step, pump2_flow * 3600, label="P2")
+    ax[1, 0].plot(time_step, 100 * pump1_flow / max(pump1_flow), label="Main pump")
+    ax[1, 0].plot(time_step, 100 * pump2_flow / max(pump2_flow), label="Boost pump")
     ax[1, 0].set_xlabel("Time [hr]")
-    ax[1, 0].set_ylabel("Pump flowrate [m3/hr]")
+    ax[1, 0].set_ylabel("Pump flowrate [% of max]")
+    ax[1, 0].set_ylim([0, 100])
 
     ax[2, 0].plot(time_step, recovery * 100)
     ax[2, 0].set_xlabel("Time [hr]")
     ax[2, 0].set_ylabel("Water Recovery [%]")
+    ax[2, 0].set_ylim([1, 100])
 
-    ax[0, 1].plot(time_step, power)
+    ax[0, 1].plot(time_step, 100 * power / max(power))
     ax[0, 1].set_xlabel("Time [hr]")
-    ax[0, 1].set_ylabel("Net Power [kWh]")
+    ax[0, 1].set_ylabel("Net Power [% of max power]")
+    ax[0, 1].set_ylim([0, 100])
 
-    ax[1, 1].plot(time_step, pump1_efficiency * 100, label="P1")
-    ax[1, 1].plot(time_step, pump2_efficiency * 100, label="P2")
+    ax[1, 1].plot(
+        time_step, 100 * pump1_efficiency / max(pump1_efficiency), label="Main pump"
+    )
+    ax[1, 1].plot(
+        time_step, 100 * pump2_efficiency / max(pump2_efficiency), label="Boost pump"
+    )
     ax[1, 1].set_xlabel("Time [hr]")
-    ax[1, 1].set_ylabel("Pump efficiency [%]")
+    ax[1, 1].set_ylabel("Pump efficiency [% of max efficiency]")
     ax[1, 1].legend()
+    ax[1, 1].set_ylim([0, 100])
 
-    ax[2, 1].plot(time_step, pressure * 1e-5)
+    ax[2, 1].plot(time_step, 100 * pressure / (80e5))
     ax[2, 1].set_xlabel("Time [hr]")
-    ax[2, 1].set_ylabel("RO Inlet Pressure [bar]")
+    ax[2, 1].set_ylabel("RO Inlet Pressure [% of max pressure]")
+    ax[2, 1].set_ylim([0, 100])
 
 
 if __name__ == "__main__":
