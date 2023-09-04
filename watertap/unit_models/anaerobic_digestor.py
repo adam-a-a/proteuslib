@@ -66,12 +66,14 @@ from idaes.core.util.model_statistics import degrees_of_freedom
 from idaes.core.util.constants import Constants
 from idaes.core.util.exceptions import ConfigurationError, InitializationError
 from idaes.core.util.tables import create_stream_table_dataframe
+from watertap.core import InitializationMixin
+
 
 __author__ = "Alejandro Garciadiego, Andrew Lee, Xinhong Liu"
 
 
 @declare_process_block_class("AD")
-class ADData(UnitModelBlockData):
+class ADData(InitializationMixin, UnitModelBlockData):
     """
     AD Unit Model Class
     """
@@ -809,14 +811,14 @@ see reaction package for documentation.}""",
         )
 
         # TODO: improve this later; for now, this resolved some scaling issues for modified adm1 test file
-        if "S_IP" in self.config.liquid_property_package.component_list:
-            iscale.set_scaling_factor(self.liquid_phase.heat, 1e-6)
-            iscale.set_scaling_factor(
-                self.liquid_phase.properties_out[0].conc_mass_comp["S_IP"], 1e-5
-            )
-            iscale.set_scaling_factor(
-                self.liquid_phase.properties_out[0].conc_mass_comp["S_IN"], 1e-5
-            )
+        # if "S_IP" in self.config.liquid_property_package.component_list:
+        #     iscale.set_scaling_factor(self.liquid_phase.heat, 1e-6)
+        #     iscale.set_scaling_factor(
+        #         self.liquid_phase.properties_out[0].conc_mass_comp["S_IP"], 1e-5
+        #     )
+        #     iscale.set_scaling_factor(
+        #         self.liquid_phase.properties_out[0].conc_mass_comp["S_IN"], 1e-5
+        #     )
 
         for t, v in self.flow_vol_vap.items():
             iscale.constraint_scaling_transform(
@@ -929,12 +931,6 @@ see reaction package for documentation.}""",
         if optarg is None:
             optarg = {}
 
-        # Check DOF
-        if degrees_of_freedom(self) != 0:
-            raise InitializationError(
-                f"{self.name} degrees of freedom were not 0 at the beginning "
-                f"of initialization. DoF = {degrees_of_freedom(self)}"
-            )
 
         # Set solver options
         init_log = idaeslog.getInitLogger(self.name, outlvl, tag="unit")
@@ -960,6 +956,12 @@ see reaction package for documentation.}""",
         for t, v in self.liquid_phase.properties_out[0].conc_mass_comp.items():
             v.unfix()
 
+        # Check DOF
+        if degrees_of_freedom(self) != 0:
+            raise InitializationError(
+                f"{self.name} degrees of freedom were not 0 at the beginning "
+                f"of initialization. DoF = {degrees_of_freedom(self)}"
+            )
         # ---------------------------------------------------------------------
         # Initialize vapor phase state block
 

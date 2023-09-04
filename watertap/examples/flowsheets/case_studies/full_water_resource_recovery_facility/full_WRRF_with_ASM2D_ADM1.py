@@ -65,6 +65,8 @@ from idaes.core.util.exceptions import InitializationError
 from idaes.core.util.model_statistics import degrees_of_freedom
 from watertap.core.util.debugging_tools import *
 from pyomo.util.calc_var_value import calculate_variable_from_constraint
+from idaes.core.util.initialization import propagate_state
+from idaes.core.util.model_diagnostics import DiagnosticsToolbox
 
 def main():
     m = build_flowsheet()
@@ -72,33 +74,49 @@ def main():
     set_operating_conditions(m)
     assert_degrees_of_freedom(m, 0)
     assert_units_consistent(m)
-    scale_flowsheet(m) 
-    initialize_system(m)
 
-    display_results(m)
-    # check_jac(m)
-    check_initial_point(m)
-    # iscale.report_scaling_issues(m)
-    print("BSM2-P")
-    # solve_ad = solve(m.fs.RADM, tee=True)
-    check_initial_point(m)
+    dt = DiagnosticsToolbox(model=m.fs)
+    with open("my_dt_report.txt", "w") as f:
+        dt.report_structural_issues(stream=f)
+        dt.display_unused_variables(stream=f)
+        dt.display_variables_fixed_to_zero(stream=f)
+        # assert False
+        scale_flowsheet(m) 
+        initialize_system(m)
 
-    # assert False
-    print("Degrees of freedom", degrees_of_freedom(m))
-    assert_degrees_of_freedom(m, 0)
-    try:
-        results = solve_flowsheet(m, 
-                                  solver=None, 
-                                  optargs={
-                                      'output_file':"logfile.txt",
-                                    #   'max_iter': 1
-                                                    
-                                   },
-                                  tee=True, repeat_solve=False)
-    except RuntimeError:
-        results = None
-    print_close_to_bounds(m)
-    print_infeasible_constraints(m)
+
+        # assert False
+        # display_results(m)
+        # check_jac(m)
+        # check_initial_point(m)
+        # iscale.report_scaling_issues(m)
+        print("BSM2-P")
+        # solve_ad = solve(m.fs.RADM, tee=True)
+        # check_initial_point(m)
+
+        # assert False
+        # print("Degrees of freedom", degrees_of_freedom(m))
+        assert_degrees_of_freedom(m, 0)
+        try:
+            results = solve_flowsheet(m, 
+                                    solver=None, 
+                                    optargs={
+                                        'output_file':"logfile.txt",
+                                        'max_iter': 2
+                                                        
+                                    },
+                                    tee=True, repeat_solve=False)
+        except RuntimeError:
+            results = None
+
+        dt.report_numerical_issues(stream=f)
+        dt.display_constraints_with_large_residuals(stream=f)
+        dt.display_variables_at_or_outside_bounds(stream=f)
+        dt.display_variables_with_extreme_jacobians(stream=f)
+        dt.display_constraints_with_extreme_jacobians(stream=f)
+        check_jac(m)
+    # print_close_to_bounds(m)
+    # print_infeasible_constraints(m)
     #     results = solve(m, tee=True)
     # add_costing(m)
     # Assert DOF = 0 after adding costing
@@ -420,8 +438,8 @@ def scale_flowsheet(m):
     #         iscale.set_scaling_factor(var, 1e1)
     #     if "TU.properties_in[0.0].flow_vol" in var.name:
     #         iscale.set_scaling_factor(var, 1e5)
-    #     if "asm_adm.properties_in[0.0].flow_vol" in var.name:
-    #         iscale.set_scaling_factor(var, 1e5)
+        # if "asm_adm.properties_in[0.0].flow_vol" in var.name:
+        #     iscale.set_scaling_factor(var, 1e5)
     #     if "RADM.liquid_phase.properties_in[0.0].flow_vol" in var.name:
     #         iscale.set_scaling_factor(var, 1e5)
     #     if "adm_asm.properties_in[0.0].flow_vol" in var.name:
@@ -430,22 +448,122 @@ def scale_flowsheet(m):
     #         iscale.set_scaling_factor(var, 1e5)       
     #     if "temperature" in var.name:
     #         iscale.set_scaling_factor(var, 1e-2)
-        # if "pressure" in var.name:
-        #     iscale.set_scaling_factor(var, 1e-4)
+    #     if "pressure" in var.name:
+    #         iscale.set_scaling_factor(var, 1e-4)
+    # iscale.constraint_scaling_transform(m.fs.adm_asm.eq_flow_vol_rule[0.0], 1e5)
 
+
+    # for j in m.fs.props_ADM1.solute_set:
+    #     iscale.set_scaling_factor(m.fs.RADM.liquid_phase.properties_in[0].conc_mass_comp[j], pyo.value(10/m.fs.RADM.liquid_phase.properties_in[0].conc_mass_comp[j]))
+    #     iscale.set_scaling_factor(m.fs.RADM.liquid_phase.properties_out[0].conc_mass_comp[j], pyo.value(10/m.fs.RADM.liquid_phase.properties_out[0].conc_mass_comp[j]))
+
+    # iscale.set_scaling_factor(m.fs.RADM.liquid_phase.properties_in[0].flow_vol, pyo.value(1/m.fs.RADM.liquid_phase.properties_in[0].flow_vol))
+    # iscale.set_scaling_factor(m.fs.RADM.liquid_phase.properties_out[0].flow_vol, pyo.value(1/m.fs.RADM.liquid_phase.properties_out[0].flow_vol))
+    
     iscale.calculate_scaling_factors(m)
+    # iscale.constraint_scaling_transform(m.fs.TU.material_splitting_eqn[0.0, 'overflow', 'Liq', 'S_A'], 1e5)
+    # iscale.constraint_scaling_transform(m.fs.TU.material_splitting_eqn[0.0, 'overflow', 'Liq', 'S_NH4'], 1e5)
+    # iscale.constraint_scaling_transform(m.fs.TU.material_splitting_eqn[0.0, 'overflow', 'Liq', 'S_O2'], 1e5)
+    # iscale.set_scaling_factor(m.fs.RADM.liquid_phase, )
+
     # iscale.constraint_scaling_transform(m.fs.RADM.liquid_phase.material_balances[0,'Liq', 'S_IN'],1e5)
     # iscale.constraint_scaling_transform(m.fs.RADM.liquid_phase.material_balances[0,'Liq', 'S_IP'],1e5)
     # iscale.constraint_scaling_transform(m.fs.MX4.enthalpy_mixing_equations[0], 1e-3)
 
 def initialize_system(m):
     # Initialize flowsheet
+
+    # m.fs.FeedWater.initialize()
+    # propagate_state(m.fs.stream01)
+    # propagate_state(source=m.fs.FeedWater.outlet, destination=m.fs.CL.inlet)
+
+    def forward_initialization(m):
+        # m.fs.MX2.initialize()
+        # propagate_state(m.fs.stream02)
+
+        # m.fs.MX3.initialize()
+        # propagate_state(m.fs.stream03)
+
+        m.fs.CL.initialize()
+        propagate_state(m.fs.stream04)
+        propagate_state(m.fs.stream9adm)
+
+        propagate_state(source=m.fs.CL.effluent, destination=m.fs.R1.inlet)
+
+        # m.fs.MX1.initialize()
+        # propagate_state(m.fs.stream2)
+
+        m.fs.R1.initialize()
+        propagate_state(m.fs.stream3)
+
+        m.fs.R2.initialize()
+        propagate_state(m.fs.stream4)
+
+        m.fs.R3.initialize()
+        propagate_state(m.fs.stream5)
+
+        m.fs.R4.initialize()
+        propagate_state(m.fs.stream6)
+        
+        m.fs.R5.initialize()
+        propagate_state(m.fs.stream7)
+
+        m.fs.SP5.initialize()
+        propagate_state(m.fs.stream8)
+        propagate_state(m.fs.stream9)
+
+        m.fs.CL1.initialize()
+        propagate_state(m.fs.stream10)
+        m.fs.Treated.initialize()
+        propagate_state(m.fs.stream11)
+
+        m.fs.SP6.initialize()
+        propagate_state(m.fs.stream6adm)
+        propagate_state(m.fs.stream13)
+
+        m.fs.MX6.initialize()
+        propagate_state(m.fs.stream14)
+
+        m.fs.P1.initialize()
+        propagate_state(m.fs.stream15)
+
+        m.fs.TU.initialize()
+        propagate_state(m.fs.stream7adm)
+        propagate_state(m.fs.stream3adm)
+
+        propagate_state(source=m.fs.TU.underflow, destination=m.fs.asm_adm.inlet)
+        # m.fs.MX4.initialize()
+        # propagate_state(m.fs.stream10adm)
+
+        resi=solver.solve(m.fs.asm_adm)
+        pyo.assert_optimal_termination(resi)
+        # m.fs.asm_adm.initialize()
+        propagate_state(m.fs.stream1adm)
+
+        m.fs.RADM.initialize()
+        propagate_state(m.fs.stream2adm)
+
+        m.fs.adm_asm.initialize()
+        propagate_state(m.fs.stream4adm)
+        
+        # resi=solver.solve(m.fs.DU)
+        # pyo.assert_optimal_termination(resi)
+        # m.fs.DU.initialize()
+        # propagate_state(m.fs.stream5adm)
+
+    # forward_initialization(m)
+
+
+
+
     # Apply sequential decomposition - 1 iteration should suffice
     seq = SequentialDecomposition(tear_solver='cbc')
     seq.options.tear_method = "Direct"
-    seq.options.select_tear_method = "heuristic"
+    # seq.options.select_tear_method = "heuristic"
     seq.options.iterLim = 1
-    seq.options.tear_set = [m.fs.stream2, m.fs.stream10adm]
+    seq.options.tear_set = [m.fs.stream2,
+                            #  m.fs.stream1adm
+                             ]
 
     # G = seq.create_graph(m)
     # # Uncomment this code to see tear set and initialization order
@@ -456,68 +574,83 @@ def initialize_system(m):
 
     # # Initial guesses for flow into first reactor
     tear_guesses1 = {
-        "flow_vol": {0: 103531 / 24 / 3600},
+        "flow_vol": {0: 41771.5088 / 24 / 3600},
         "conc_mass_comp": {
-            (0, "S_O2"): 0.001,
-            (0, "S_F"): 0.005,
-            (0, "S_A"): 0.015,
-            (0, "S_I"): 0.027,
-            (0, "S_NH4"): 0.018,
-            (0, "S_N2"): 0.009,
-            (0, "S_NO3"): 5.49e-5,
-            (0, "S_PO4"): 0.025,
-            (0, "S_IC"): 0.079,
+            (0, "S_O2"): 0.001*1e-3,
+            (0, "S_F"): 4.9269*1e-3,
+            (0, "S_A"): 15.1297*1e-3,
+            (0, "S_I"): 26.5963*1e-3,
+            (0, "S_NH4"): 18.3884*1e-3,
+            (0, "S_N2"): 8.7476*1e-3,
+            (0, "S_NO3"): 0.0549*1e-3,
+            (0, "S_PO4"): 24.6577*1e-3,
+            (0, "S_IC"): 78.5868*1e-3,
 
-            (0, "X_I"): 1.824,
-            (0, "X_S"): 0.132,
-            (0, "X_H"): 1.851,
-            (0, "X_PAO"): 1.009,
-            (0, "X_PP"): 0.279,
-            (0, "X_PHA"): 0.044,
-            (0, "X_AUT"): 0.113,
-            (0, "S_K"): 0.029,
-            (0, "S_Mg"): 0.102,
+            (0, "X_I"): 1823.9623*1e-3,
+            (0, "X_S"): 131.8040*1e-3,
+            (0, "X_H"): 1850.8924*1e-3,
+            (0, "X_PAO"): 1009.3055*1e-3,
+            (0, "X_PP"): 278.5364*1e-3,
+            (0, "X_PHA"): 44.2673*1e-3,
+            (0, "X_AUT"): 112.8643*1e-3,
+            (0, "S_K"): 28.9963*1e-3,
+            (0, "S_Mg"): 101.9855*1e-3,
             },
         "temperature": {0: 308.15},
         "pressure": {0: 101325},
     }
 
-    tear_guesses2 = {
-        "flow_vol": {0: 178 / 24 / 3600},
-        "conc_mass_comp": {
-            (0, "S_O2"): 0.001,
-            (0, "S_F"): 0.005,
-            (0, "S_A"): 0.015,
-            (0, "S_I"): 0.027,
-            (0, "S_NH4"): 0.018,
-            (0, "S_N2"): 0.009,
-            (0, "S_NO3"): 5.49e-5,
-            (0, "S_PO4"): 0.025,
-            (0, "S_IC"): 0.079,
+    # tear_guesses2 = {
+    #     "flow_vol": {0: 190 / 24 / 3600},
+    #     "conc_mass_comp": {
+    #         (0, "S_Su"): 0.001,
+    #         (0, "S_aa"): 0.0062,
+    #         (0, "S_fa"): 0.1260,
+    #         (0, "S_va"): 0.0129,
+    #         (0, "S_bu"): 0.0168,
+    #         (0, "S_pro"): 0.0204,
+    #         (0, "S_ac"): 0.0588,
+    #         (0, "S_h2"): 1e-8,
+    #         (0, "S_ch4"): 0.0544,
+    #         (0, "S_IC"): 0.0890,
+    #         (0, "S_IN"): 0.0663,
+    #         (0, "S_I"): 0.0263,
+    #         (0, "S_IP"): 0.0280,
 
-            (0, "X_I"): 10.824,
-            (0, "X_S"): 10.132,
-            (0, "X_H"): 10.851,
-            (0, "X_PAO"): 10.009,
-            (0, "X_PP"): 10.279,
-            (0, "X_PHA"): 10.044,
-            (0, "X_AUT"): 10.113,
-            (0, "S_K"): 0.029,
-            (0, "S_Mg"): 0.102,
-            },
-        "temperature": {0: 308.15},
-        "pressure": {0: 101325},
-    }
+    #         (0, "X_ch"): 1.3020,
+    #         (0, "X_pr"): 1.3613,
+    #         (0, "X_li"): 1.8127,
+    #         (0, "X_su"): 0.5146,
+    #         (0, "X_aa"): 0.4017,
+    #         (0, "X_fa"): 0.3749,
+    #         (0, "X_c4"): 0.1596,
+    #         (0, "X_pro"): 0.0896,
+    #         (0, "X_ac"): 0.5006,
+    #         (0, "X_h2"): 0.2580,
+    #         (0, "X_I"): 12.9232,
+    #         (0, "X_PHA"): 0.6697,
+    #         (0, "X_PP"): 1e-8,
+    #         (0, "X_PAO"): 0.9154,
+    #         (0, "S_K"): 0.0129,
+    #         (0, "S_Mg"): 0.0001,
+
+    #         },
+    #     "temperature": {0: 308.15},
+    #     "pressure": {0: 101325},
+    # }
 
     # # Pass the tear_guess to the SD tool
     seq.set_guesses_for(m.fs.R1.inlet, tear_guesses1)
-    seq.set_guesses_for(m.fs.asm_adm.inlet, tear_guesses2)
+    # seq.set_guesses_for(m.fs.asm_adm.outlet, tear_guesses2)
 
     def function(unit):
         unit.initialize(outlvl=idaeslog.DEBUG)
 
     seq.run(m, function)
 
+    # m.fs.FeedWater.initialize()
+    # propagate_state(m.fs.stream01)
+    # forward_initialization(m)
 
 def add_costing(m):
     # TODO: implement unit model and flowsheet level costing

@@ -56,15 +56,6 @@ from watertap.core.util.initialization import check_solve
 _log = idaeslog.getLogger(__name__)
 
 
-def automate_rescale_variables(m):
-    for var, sv in iscale.badly_scaled_var_generator(m):
-        if iscale.get_scaling_factor(var) is None:
-            continue
-        sf = iscale.get_scaling_factor(var)
-        iscale.set_scaling_factor(var, sf / sv)
-        iscale.calculate_scaling_factors(m)
-
-
 def build_flowsheet():
     m = pyo.ConcreteModel()
 
@@ -389,10 +380,7 @@ def build_flowsheet():
     seq.set_guesses_for(m.fs.R3.inlet, tear_guesses)
 
     def function(unit):
-        unit.initialize(outlvl=idaeslog.INFO, optarg={"bound_push": 1e-8})
-        badly_scaled_vars = list(iscale.badly_scaled_var_generator(unit))
-        if len(badly_scaled_vars) > 0:
-            automate_rescale_variables(unit)
+        unit.initialize(outlvl=idaeslog.INFO)
 
     seq.run(m, function)
 

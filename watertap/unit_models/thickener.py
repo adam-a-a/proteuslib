@@ -43,6 +43,7 @@ from pyomo.common.config import ConfigValue, In
 from idaes.core.util.exceptions import (
     ConfigurationError,
 )
+from watertap.core import InitializationMixin
 
 __author__ = "Alejandro Garciadiego, Adam Atia"
 
@@ -64,7 +65,7 @@ class ActivatedSludgeModelType(Enum):
 
 
 @declare_process_block_class("Thickener")
-class ThickenerData(SeparatorData):
+class ThickenerData(InitializationMixin, SeparatorData):
     """
     Thickener unit model for BSM2
     """

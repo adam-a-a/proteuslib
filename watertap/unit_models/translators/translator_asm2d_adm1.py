@@ -49,6 +49,7 @@ from idaes.core.util.exceptions import InitializationError
 from watertap.property_models.activated_sludge.modified_asm2d_reactions import (
     DecaySwitch,
 )
+from watertap.core import InitializationMixin
 
 __author__ = "Marcus Holly"
 
@@ -58,7 +59,7 @@ _log = idaeslog.getLogger(__name__)
 
 
 @declare_process_block_class("Translator_ASM2d_ADM1")
-class TranslatorDataASM2dADM1(TranslatorData):
+class TranslatorDataASM2dADM1(InitializationMixin, TranslatorData):
     """
     Translator block representing the ASM2d/ADM1 interface
     """

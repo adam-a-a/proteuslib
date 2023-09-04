@@ -43,7 +43,7 @@ from pyomo.common.config import ConfigValue, In
 from idaes.core.util.exceptions import (
     ConfigurationError,
 )
-
+from watertap.core import InitializationMixin
 __author__ = "Alejandro Garciadiego, Adam Atia"
 
 
@@ -64,7 +64,7 @@ class ActivatedSludgeModelType(Enum):
 
 
 @declare_process_block_class("DewateringUnit")
-class DewateringData(SeparatorData):
+class DewateringData(InitializationMixin, SeparatorData):
     """
     Dewatering unit block for BSM2
     """

@@ -44,6 +44,7 @@ from pyomo.environ import (
     check_optimal_termination,
     Set,
 )
+from watertap.core import InitializationMixin
 
 __author__ = "Chenyu Wang, Marcus Holly, Xinhong Liu"
 
@@ -53,7 +54,7 @@ _log = idaeslog.getLogger(__name__)
 
 
 @declare_process_block_class("Translator_ADM1_ASM2D")
-class TranslatorDataADM1ASM2D(TranslatorData):
+class TranslatorDataADM1ASM2D(InitializationMixin, TranslatorData):
     """
     Translator block representing the ADM1/ASM2D interface
     """
