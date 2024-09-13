@@ -17,29 +17,47 @@ from pyomo.environ import (
 
 from parameter_sweep import LinearSample, parameter_sweep
 from watertap.flowsheets.lsrro import lsrro
+from watertap.flowsheets.lsrro.lsrro import ABTradeoff, ACase, BCase
 
 
 def _lsrro_presweep(
-    number_of_stages=2, A_value=5 / 3.6e11, permeate_quality_limit=1000e-6, has_CP=True
+    number_of_stages=2, A_value=5 / 3.6e11, permeate_quality_limit=500e-6, has_CP=True
 ):
     m = lsrro.build(
         number_of_stages=number_of_stages,
         has_NaCl_solubility_limit=True,
         has_calculated_concentration_polarization=has_CP,
         has_calculated_ro_pressure_drop=True,
+        number_of_RO_finite_elements=10,
+        B_max=3.5e-6,
+
     )
-    lsrro.set_operating_conditions(m)
+    lsrro.set_operating_conditions(m, Cin=1)
     lsrro.initialize(m)
     lsrro.solve(m)
     m.fs.feed.flow_mass_phase_comp.unfix()
     m.fs.feed.properties[0].conc_mass_phase_comp["Liq", "NaCl"].fix()
     m.fs.feed.properties[0].flow_vol_phase["Liq"].fix()
     lsrro.optimize_set_up(
-        m,
+        m,        
         set_default_bounds_on_module_dimensions=True,
-        A_value=A_value,
-        permeate_quality_limit=permeate_quality_limit,
+        # number_of_stages=4,
+        # water_recovery=0.9861,
+        # Cin=1,  # inlet NaCl conc kg/m3,
+        # Qin=1e-3,  # inlet feed flowrate m3/s
+        Cbrine=180,  # brine conc kg/m3
+        A_case=ACase.optimize,
+        B_case=BCase.optimize,
+        AB_tradeoff=ABTradeoff.equality_constraint,
+        # A_value=4.2e-12, #membrane water permeability coeff m/s-Pa
+        # has_NaCl_solubility_limit=True,
+        # has_calculated_concentration_polarization=True,
+        # has_calculated_ro_pressure_drop=True,
+        permeate_quality_limit=500e-6,
+        AB_gamma_factor=1,
+        B_max=3.5e-6,
     )
+    
 
     return m
 
@@ -79,12 +97,12 @@ def run_case(number_of_stages, nx, output_filename=None):
     # Sweep parameters ------------------------------------------------------------------------
 
     sweep_params["Feed Concentration"] = LinearSample(
-        m.fs.feed.properties[0].conc_mass_phase_comp["Liq", "NaCl"], 5, 250, nx
+        m.fs.feed.properties[0].conc_mass_phase_comp["Liq", "NaCl"], 1, 10, nx
     )
 
-    sweep_params["Volumetric Recovery Rate"] = LinearSample(
-        m.fs.water_recovery, 0.3, 0.9, nx
-    )
+    # sweep_params["Volumetric Recovery Rate"] = LinearSample(
+    #     m.fs.water_recovery, 0.3, 0.9, nx
+    # )
 
     # Outputs  -------------------------------------------------------------------------------
     outputs["LCOW"] = m.fs.costing.LCOW
@@ -371,6 +389,6 @@ def run_case(number_of_stages, nx, output_filename=None):
 
 
 if __name__ == "__main__":
-    for n in range(1, 9):
-        global_results, sweep_params, m = run_case(number_of_stages=n, nx=4)
+    for n in range(2, 6):
+        global_results, sweep_params, m = run_case(number_of_stages=n, nx=19)
         print(global_results)

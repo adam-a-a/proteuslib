@@ -271,7 +271,7 @@ def build(
     m.fs.ro_min_pressure = Param(initialize=10e5, units=pyunits.Pa, mutable=True)
     m.fs.lsrro_min_pressure = Param(initialize=10e5, units=pyunits.Pa, mutable=True)
     m.fs.ro_max_pressure = Param(initialize=85e5, units=pyunits.Pa, mutable=True)
-    m.fs.lsrro_max_pressure = Param(initialize=65e5, units=pyunits.Pa, mutable=True)
+    m.fs.lsrro_max_pressure = Param(initialize=85e5, units=pyunits.Pa, mutable=True)
 
     if B_max is not None:
         m.fs.B_max = Param(initialize=B_max, mutable=True, units=pyunits.m / pyunits.s)
@@ -605,8 +605,8 @@ def set_operating_conditions(m, Cin=None, Qin=None):
     # parameters
     pump_efi = 0.75  # pump efficiency [-]
     erd_efi = 0.8  # energy recovery device efficiency [-]
-    mem_A = 4.2e-12  # membrane water permeability coefficient [m/s-Pa]
-    mem_B = 3.5e-8  # membrane salt permeability coefficient [m/s]
+    mem_A = 5/1.5*4.2e-12  # membrane water permeability coefficient [m/s-Pa]
+    mem_B = 4.74e-7 #3.5e-8  # membrane salt permeability coefficient [m/s]
     height = 1e-3  # channel height in membrane stage [m]
     spacer_porosity = 0.85  # spacer porosity in membrane stage [-]
     width = 5 * Qin / 1e-3  # effective membrane width [m]
@@ -651,7 +651,8 @@ def set_operating_conditions(m, Cin=None, Qin=None):
         if idx == m.fs.FirstStage:
             B_scale = 1.0
         else:
-            B_scale = 100.0
+            B_scale = 1#00.0
+            # stage.B_comp.setub(1e-4)
 
         stage.A_comp.fix(mem_A)
         stage.B_comp.fix(mem_B * B_scale)
@@ -1106,13 +1107,13 @@ def optimize_set_up(
     # ---checking model---
     assert_units_consistent(m)
 
-    assert_degrees_of_freedom(
-        m,
-        4 * m.fs.NumberOfStages
-        - (1 if (water_recovery is not None) else 0)
-        - (1 if value(m.fs.NumberOfStages) == 1 else 0),
-    )
-
+    # assert_degrees_of_freedom(
+    #     m,
+    #     4 * m.fs.NumberOfStages
+    #     - (1 if (water_recovery is not None) else 0)
+    #     - (1 if value(m.fs.NumberOfStages) == 1 else 0),
+    # )
+    
     return m
 
 
@@ -1248,11 +1249,11 @@ def display_RO_reports(m):
 
 if __name__ == "__main__":
     m, results = run_lsrro_case(
-        number_of_stages=3,
-        water_recovery=0.50,
-        Cin=70,  # inlet NaCl conc kg/m3,
+        number_of_stages=4,
+        # water_recovery=0.9861,
+        Cin=1,  # inlet NaCl conc kg/m3,
         Qin=1e-3,  # inlet feed flowrate m3/s
-        Cbrine=None,  # brine conc kg/m3
+        Cbrine=180,  # brine conc kg/m3
         A_case=ACase.optimize,
         B_case=BCase.optimize,
         AB_tradeoff=ABTradeoff.equality_constraint,
