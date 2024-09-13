@@ -1113,7 +1113,27 @@ def optimize_set_up(
     #     - (1 if (water_recovery is not None) else 0)
     #     - (1 if value(m.fs.NumberOfStages) == 1 else 0),
     # )
-    
+    m.fs.ROUnits[1].A_comp.unfix()
+    m.fs.ROUnits[1].B_comp.unfix()
+    m.fs.ROUnits[1].ABtradeoff = Constraint(
+                    expr=pyunits.convert(
+                        m.fs.ROUnits[1].B_comp[0, "NaCl"],
+                        to_units=pyunits.L * pyunits.m**-2 * pyunits.hour**-1,
+                    )
+                    == m.fs.AB_tradeoff_coeff
+                    * pyunits.convert(
+                        m.fs.ROUnits[1].A_comp[0, "H2O"],
+                        to_units=pyunits.L
+                        * pyunits.m**-2
+                        * pyunits.bar**-1
+                        * pyunits.hour**-1,
+                    )
+                    ** 3
+                    * pyunits.L**-2
+                    * pyunits.m**4
+                    * pyunits.hour**2
+                    * pyunits.bar**3
+                )
     return m
 
 
@@ -1249,7 +1269,7 @@ def display_RO_reports(m):
 
 if __name__ == "__main__":
     m, results = run_lsrro_case(
-        number_of_stages=4,
+        number_of_stages=3,
         # water_recovery=0.9861,
         Cin=1,  # inlet NaCl conc kg/m3,
         Qin=1e-3,  # inlet feed flowrate m3/s
